@@ -1,0 +1,899 @@
+# Automatic Video Editor — Implementation Guide
+
+## 1. Implementation Philosophy
+
+Build the application from the bottom upward.
+
+The first objective is not "make AI edit videos."
+
+The first objective is:
+
+> Establish a reliable pipeline that can take a video, understand its contents, identify candidate moments, and produce a playable clip.
+
+Every subsequent feature builds on this.
+
+---
+
+# 2. Development Order
+
+```text
+1. Repository
+2. Electron shell
+3. React UI
+4. FastAPI backend
+5. SQLite
+6. Project system
+7. Video ingestion
+8. FFmpeg integration
+9. Transcription
+10. Scene detection
+11. Event representation
+12. Candidate generation
+13. Candidate scoring
+14. Clip generation
+15. Clip browser
+16. Editing profiles
+17. Automated editing
+18. Export
+19. Optimization
+20. Advanced AI
+```
+
+---
+
+# 3. Application Bootstrap
+
+Create:
+
+```text
+frontend/
+backend/
+electron/
+tests/
+data/
+```
+
+The application should eventually launch with one command.
+
+Development architecture:
+
+```text
+Electron
+ ├── starts Vite
+ └── starts FastAPI
+```
+
+Production architecture:
+
+```text
+Electron
+ ├── loads compiled React
+ └── starts packaged FastAPI process
+```
+
+---
+
+# 4. Electron Layer
+
+Electron should remain thin.
+
+Responsibilities:
+
+* Start backend
+* Create browser window
+* Expose safe IPC APIs
+* File dialogs
+* Application paths
+* Process lifecycle
+* Shutdown handling
+
+Do not put business logic here.
+
+---
+
+# 5. React Layer
+
+React should be responsible for presentation and user interaction.
+
+Suggested page flow:
+
+```text
+Dashboard
+   ↓
+Create Project
+   ↓
+Import Video
+   ↓
+Processing
+   ↓
+Analysis Results
+   ↓
+Clip Candidates
+   ↓
+Review
+   ↓
+Edit
+   ↓
+Export
+```
+
+---
+
+# 6. Backend Initialization
+
+Create FastAPI application.
+
+Initial routes:
+
+```text
+/api/health
+/api/projects
+/api/videos
+/api/jobs
+```
+
+Health response:
+
+```json
+{
+  "status": "ok"
+}
+```
+
+The frontend should verify backend availability before displaying processing functionality.
+
+---
+
+# 7. SQLite Initialization
+
+Create database and migrations.
+
+Initial tables:
+
+```text
+projects
+videos
+processing_jobs
+transcript_segments
+scenes
+events
+clip_candidates
+clips
+exports
+edit_profiles
+```
+
+Add indexes for:
+
+```text
+project_id
+video_id
+timestamp
+job_id
+status
+score
+```
+
+---
+
+# 8. Project System
+
+A project represents a video-editing workspace.
+
+Project fields:
+
+```text
+id
+name
+description
+created_at
+updated_at
+workspace_path
+status
+```
+
+Project creation should establish:
+
+```text
+project/
+├── source/
+├── media/
+├── analysis/
+├── clips/
+└── exports/
+```
+
+---
+
+# 9. Video Import
+
+When importing:
+
+1. Validate extension.
+2. Determine file size.
+3. Determine path.
+4. Run FFprobe.
+5. Store metadata.
+6. Create project reference.
+7. Generate thumbnail.
+8. Mark video as ready.
+
+Metadata:
+
+```text
+filename
+path
+duration
+width
+height
+fps
+codec
+audio codec
+sample rate
+channels
+file size
+```
+
+Do not immediately perform full AI analysis during import.
+
+---
+
+# 10. FFmpeg Service
+
+Create a dedicated service:
+
+```text
+backend/app/services/ffmpeg_service.py
+```
+
+Responsibilities:
+
+```text
+probe()
+extract_audio()
+generate_thumbnail()
+generate_preview()
+cut_clip()
+resize()
+crop()
+encode()
+burn_captions()
+normalize_audio()
+```
+
+All FFmpeg calls should go through this service.
+
+---
+
+# 11. Audio Extraction
+
+Extract audio into a temporary or cached representation.
+
+Recommended format for transcription:
+
+```text
+mono
+16 kHz
+WAV
+```
+
+Keep the original source untouched.
+
+---
+
+# 12. Transcription Pipeline
+
+Input:
+
+```text
+video
+```
+
+Output:
+
+```text
+Transcript
+ ├── Segment
+ │    ├── start
+ │    ├── end
+ │    ├── text
+ │    └── confidence
+```
+
+Example:
+
+```json
+{
+  "start": 123.4,
+  "end": 127.9,
+  "text": "I cannot believe that actually worked.",
+  "confidence": 0.94
+}
+```
+
+Store timestamps accurately.
+
+Timestamp precision is critical because downstream clipping depends on it.
+
+---
+
+# 13. Scene Detection
+
+Run scene detection independently of transcription.
+
+Output:
+
+```json
+{
+  "start": 122.1,
+  "end": 130.7
+}
+```
+
+Scenes should be persisted.
+
+Do not throw away scene information after generating candidates.
+
+---
+
+# 14. Event System
+
+Create a generic event model.
+
+Example:
+
+```json
+{
+  "video_id": 1,
+  "type": "reaction",
+  "start": 123.4,
+  "end": 128.2,
+  "confidence": 0.87,
+  "source": "llm"
+}
+```
+
+Possible event types:
+
+```text
+speech
+silence
+audio_spike
+scene_change
+reaction
+laughter
+joke
+punchline
+surprise
+victory
+failure
+important_statement
+question
+answer
+emotional_peak
+high_energy
+```
+
+The event system is one of the most important extensibility points.
+
+---
+
+# 15. Candidate Generation
+
+Candidates should be generated by grouping nearby events.
+
+For example:
+
+```text
+Event A: reaction       10:02
+Event B: audio spike    10:05
+Event C: victory        10:08
+```
+
+Could produce:
+
+```text
+Candidate:
+09:55 → 10:18
+```
+
+Candidate generation should include configurable padding:
+
+```text
+pre_roll = 5 seconds
+post_roll = 8 seconds
+```
+
+The system should avoid cutting directly on the first or last word.
+
+---
+
+# 16. Candidate Scoring
+
+Candidate scoring should combine multiple signals.
+
+Example:
+
+```text
+semantic_score
+audio_score
+visual_score
+context_score
+standalone_score
+novelty_score
+duration_score
+```
+
+Example formula:
+
+```text
+score =
+    semantic * 0.30
+  + audio     * 0.15
+  + visual    * 0.15
+  + context   * 0.15
+  + standalone * 0.15
+  + novelty   * 0.10
+```
+
+Weights should be configurable.
+
+Do not hard-code the scoring system permanently.
+
+---
+
+# 17. Semantic Analysis
+
+Instead of sending an entire video to the LLM, send structured windows.
+
+Example:
+
+```text
+VIDEO WINDOW
+Start: 00:13:40
+End:   00:14:20
+
+Transcript:
+...
+
+Audio:
+High energy beginning at 00:13:51
+
+Scene:
+Continuous
+
+Detected events:
+Reaction
+Possible victory
+```
+
+Ask the model to return structured JSON.
+
+Expected result:
+
+```json
+{
+  "is_highlight": true,
+  "score": 0.91,
+  "category": "reaction",
+  "reason": "Strong reaction followed by a successful outcome",
+  "suggested_start_offset": -4.2,
+  "suggested_end_offset": 7.5
+}
+```
+
+Validate model output before storing it.
+
+---
+
+# 18. Clip Generation
+
+A clip is initially just a timeline definition.
+
+```text
+source video
+start
+end
+editing profile
+```
+
+Generating the actual MP4 should be a separate operation.
+
+This allows:
+
+```text
+same candidate
+   ↓
+Shorts version
+TikTok version
+YouTube version
+Clean version
+```
+
+---
+
+# 19. Clip Review UI
+
+The candidate browser should show:
+
+```text
+┌────────────────────────────────────────────┐
+│ Thumbnail                                  │
+│                                            │
+│ "NO WAY! I actually did it!"               │
+│                                            │
+│ Score: 91                                  │
+│ Category: Reaction                         │
+│ Duration: 38 sec                            │
+│                                            │
+│ [Preview] [Keep] [Reject] [Edit]           │
+└────────────────────────────────────────────┘
+```
+
+Candidates should be sortable by:
+
+```text
+score
+duration
+category
+timestamp
+status
+```
+
+---
+
+# 20. Human Feedback
+
+The system should record:
+
+```text
+accepted
+rejected
+edited
+exported
+```
+
+This creates a future training signal.
+
+Example:
+
+```text
+Candidate score: 0.87
+User rejected it
+```
+
+Over time the system can learn that this type of candidate is less desirable.
+
+This should be designed into the data model from the beginning even if machine learning is not initially implemented.
+
+---
+
+# 21. Editing Engine
+
+Create an editing plan.
+
+Example:
+
+```json
+{
+  "source": "video.mp4",
+  "start": 813.2,
+  "end": 851.8,
+  "aspect_ratio": "9:16",
+  "captions": true,
+  "zoom": true,
+  "audio_normalization": true
+}
+```
+
+The editing engine converts this plan into deterministic FFmpeg operations.
+
+---
+
+# 22. Captions
+
+Initial implementation:
+
+```text
+Whisper transcript
+ ↓
+timestamped words/segments
+ ↓
+SRT/ASS
+ ↓
+FFmpeg
+ ↓
+burned captions
+```
+
+Later:
+
+* Animated captions
+* Highlighted words
+* Speaker colors
+* Caption themes
+* Emoji emphasis
+
+---
+
+# 23. Smart Reframing
+
+For vertical video:
+
+```text
+16:9 source
+     ↓
+9:16 output
+```
+
+Potential pipeline:
+
+```text
+face/person detection
+        ↓
+subject position
+        ↓
+dynamic crop
+        ↓
+smooth camera movement
+```
+
+The MVP can use center cropping.
+
+Smart tracking should be added later.
+
+---
+
+# 24. Export Engine
+
+Exports should be reproducible.
+
+Store:
+
+```text
+source video
+candidate
+editing profile
+editing plan
+application version
+export settings
+timestamp
+```
+
+This allows debugging and regeneration.
+
+---
+
+# 25. Job Architecture
+
+Create a job abstraction:
+
+```python
+Job
+ ├── id
+ ├── type
+ ├── status
+ ├── progress
+ ├── started_at
+ ├── completed_at
+ └── error
+```
+
+Job types:
+
+```text
+INGEST
+EXTRACT_AUDIO
+TRANSCRIBE
+DETECT_SCENES
+ANALYZE_EVENTS
+GENERATE_CANDIDATES
+SCORE_CANDIDATES
+GENERATE_CLIP
+EXPORT
+```
+
+---
+
+# 26. Failure Handling
+
+Every pipeline stage must be restartable.
+
+Example:
+
+```text
+Transcription
+    ↓
+FAILED
+```
+
+The user should be able to retry transcription without rerunning video import.
+
+Cached completed stages should not be unnecessarily repeated.
+
+---
+
+# 27. Caching
+
+Cache expensive operations.
+
+Examples:
+
+```text
+FFprobe result
+audio extraction
+transcription
+scene detection
+event detection
+LLM analysis
+thumbnails
+```
+
+Cache keys can incorporate:
+
+```text
+video hash
+model
+model version
+analysis settings
+```
+
+This prevents stale results from being silently reused.
+
+---
+
+# 28. Testing Strategy
+
+## Unit Tests
+
+Test:
+
+* Scoring
+* Candidate generation
+* Time calculations
+* File paths
+* API schemas
+* Editing-plan generation
+
+## Integration Tests
+
+Test:
+
+```text
+video
+ ↓
+FFmpeg
+ ↓
+audio
+ ↓
+transcription
+ ↓
+candidate
+ ↓
+clip
+```
+
+Use short synthetic test videos.
+
+## End-to-End Test
+
+A complete test should eventually:
+
+```text
+Import test.mp4
+Analyze
+Generate candidates
+Generate clip
+Verify MP4
+Verify duration
+Verify audio
+Verify video stream
+```
+
+---
+
+# 29. Performance
+
+Video processing is expensive.
+
+Avoid:
+
+* Loading entire videos into RAM.
+* Re-encoding unnecessarily.
+* Running AI models repeatedly.
+* Processing every frame when sampling is sufficient.
+* Sending large raw data to LLMs.
+
+Prefer:
+
+```text
+streaming
+sampling
+caching
+parallel independent stages
+hardware acceleration where available
+```
+
+---
+
+# 30. Model Abstraction
+
+Never hard-code one model into the application architecture.
+
+Create:
+
+```text
+Provider
+ ├── WhisperProvider
+ ├── OllamaProvider
+ ├── VisionProvider
+ └── FutureCloudProvider
+```
+
+The application asks for capabilities rather than implementations.
+
+---
+
+# 31. Configuration
+
+Central settings should control:
+
+```text
+transcription model
+LLM model
+analysis sensitivity
+minimum clip duration
+maximum clip duration
+pre-roll
+post-roll
+candidate count
+caption settings
+export format
+hardware acceleration
+worker count
+cache location
+```
+
+---
+
+# 32. First Working Milestone
+
+The first true success condition should be:
+
+```text
+User selects MP4
+      ↓
+Application analyzes it
+      ↓
+Transcript appears
+      ↓
+Candidate moments appear
+      ↓
+User clicks candidate
+      ↓
+Playable clip is generated
+```
+
+Do not add advanced visual effects before this works reliably.
+
+---
+
+# 33. Definition of Done for MVP
+
+MVP is complete when the application can:
+
+* Create a project
+* Import a video
+* Inspect media
+* Extract audio
+* Transcribe locally
+* Detect scenes
+* Identify candidate moments
+* Score candidates
+* Display candidates
+* Preview candidates
+* Generate clips
+* Export clips
+* Recover from failed processing
+* Persist project state
+* Run without a cloud account
