@@ -1,13 +1,6 @@
-"""API response schemas (contract source for the frontend)."""
+"""API schemas (contract source for the frontend)."""
 
-from __future__ import annotations
+from app.schemas.health import HealthResponse
+from app.schemas.projects import ProjectCreate, ProjectRead, ProjectUpdate
 
-from pydantic import BaseModel
-
-
-class HealthResponse(BaseModel):
-    """Backend availability probe."""
-
-    status: str
-    version: str
-    database: str
+__all__ = ["HealthResponse", "ProjectCreate", "ProjectRead", "ProjectUpdate"]

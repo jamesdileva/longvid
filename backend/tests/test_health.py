@@ -2,17 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
 
-from app.main import create_app
-
-
-def make_client() -> TestClient:
-    return TestClient(create_app())
-
-
-def test_health_returns_ok() -> None:
-    response = make_client().get("/api/health")
+def test_health_returns_ok(client) -> None:
+    response = client.get("/api/health")
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
@@ -20,12 +12,14 @@ def test_health_returns_ok() -> None:
     assert body["database"] == "ok"
 
 
-def test_health_schema_fields() -> None:
-    response = make_client().get("/api/health")
+def test_health_schema_fields(client) -> None:
+    response = client.get("/api/health")
     assert set(response.json().keys()) == {"status", "version", "database"}
 
 
-def test_openapi_exposes_health() -> None:
-    response = make_client().get("/openapi.json")
+def test_openapi_exposes_health_and_projects(client) -> None:
+    response = client.get("/openapi.json")
     assert response.status_code == 200
-    assert "/api/health" in response.json()["paths"]
+    paths = response.json()["paths"]
+    assert "/api/health" in paths
+    assert "/api/projects" in paths

@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from app import __version__
 from app.database import db_health_check
-from app.schemas import HealthResponse
+from app.schemas.health import HealthResponse
 
 router = APIRouter(prefix="/health", tags=["health"])
 

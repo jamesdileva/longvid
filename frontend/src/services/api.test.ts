@@ -21,7 +21,10 @@ describe('fetchHealth', () => {
     const health = await fetchHealth();
 
     expect(health).toEqual(HEALTH_FIXTURE);
-    expect(fetchMock).toHaveBeenCalledWith('http://127.0.0.1:8790/api/health');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:8790/api/health',
+      expect.anything(),
+    );
   });
 
   it('throws when the backend responds with an error status', async () => {

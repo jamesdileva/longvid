@@ -1,4 +1,4 @@
-/** Backend contract types (mirror of backend Pydantic schemas). */
+/** Shared backend contract types (mirror of backend Pydantic schemas). */
 
 export interface HealthResponse {
   status: string;
