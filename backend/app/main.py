@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
         allow_origins=[
             "http://127.0.0.1:5173",
             "http://localhost:5173",
+            "null",  # packaged renderer loads from file:// (Origin: null)
         ],
         allow_methods=["*"],
         allow_headers=["*"],

@@ -10,7 +10,7 @@
  * No business logic lives here.
  */
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const process = require('node:process');
@@ -105,6 +105,16 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   ipcMain.handle('longvid:get-backend-url', () => API_BASE);
+  ipcMain.handle('longvid:choose-video', async () => {
+    // Native file dialog; the backend validates and copies the file into the
+    // project workspace, so no untrusted path is ever executed.
+    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
+      title: 'Import video',
+      properties: ['openFile'],
+      filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'mkv', 'webm', 'avi'] }],
+    });
+    return result.canceled ? null : result.filePaths[0];
+  });
 
   backendProcess = spawnBackend();
   const healthy = backendProcess ? await waitFor(HEALTH_URL, STARTUP_TIMEOUT_MS) : false;

@@ -26,6 +26,15 @@ class Settings(BaseSettings):
     database_name: str = "longvid.db"
     log_level: str = "info"
 
+    # Media tooling. Override via LONGVID_FFPROBE_PATH / LONGVID_FFMPEG_PATH
+    # if ffmpeg is not on PATH.
+    ffprobe_path: str = "ffprobe"
+    ffmpeg_path: str = "ffmpeg"
+    allowed_video_extensions: tuple[str, ...] = (".mp4", ".mov", ".mkv", ".webm", ".avi")
+    thumbnail_width: int = 320
+    preview_width: int = 480
+    preview_seconds: float = 4.0
+
     @property
     def database_url(self) -> str:
         """SQLite URL derived from the data directory."""

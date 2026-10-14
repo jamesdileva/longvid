@@ -86,6 +86,17 @@ def ensure_subdir(project_id: str, subdir: str) -> Path:
     return path
 
 
+def asset_path(project_id: str, relative: str | None) -> Path | None:
+    """Resolve a stored asset path (relative to the workspace root) safely."""
+    if not relative:
+        return None
+    workspace = workspace_path(project_id)
+    candidate = (workspace / relative).resolve()
+    if not _is_within(candidate, workspace.resolve()):
+        raise WorkspaceError(f"Asset path escapes workspace: {relative!r}")
+    return candidate
+
+
 def relative_workspace_path(project_id: str) -> str:
     """Workspace path as stored in the database (relative to the data dir)."""
     return f"{PROJECTS_DIRNAME}/{project_id}"

@@ -217,3 +217,63 @@ button.danger {
 a {
   color: var(--accent);
 }
+
+.video-import {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.video-import input {
+  flex: 1 1 260px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 12px;
+}
+
+.video-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.video-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.video-thumb {
+  aspect-ratio: 16 / 9;
+  display: block;
+  object-fit: cover;
+  width: 100%;
+}
+
+.video-thumb.placeholder {
+  background: repeating-linear-gradient(45deg, #1a1e26, #1a1e26 10px, #171a21 10px, #171a21 20px);
+}
+
+.video-body {
+  padding: 12px 16px 16px;
+}
+
+.video-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-preview {
+  border-radius: 8px;
+  margin-top: 12px;
+  width: 100%;
+}

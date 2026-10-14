@@ -1,5 +1,4 @@
-/** Base URL of the local LongVid API. Never point this at a remote host. */
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8790/api';
+import { API_BASE_URL } from './config';
 
 /** Shared JSON request helper. All API traffic funnels through here. */
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
