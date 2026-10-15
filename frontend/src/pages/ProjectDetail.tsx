@@ -4,8 +4,7 @@ import VideoCard from '../components/VideoCard';
 import VideoImportForm from '../components/VideoImportForm';
 import { getProject, updateProject } from '../services/projects';
 import { deleteVideo, importVideo, listVideos } from '../services/videos';
-import { listVideoJobs, processVideo } from '../services/jobs';
-import type { Project } from '../types/project';
+import { listVideoJobs, processVideo } from '../services/jobs';import type { Project } from '../types/project';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
 import { isActiveJob } from '../types/job';
@@ -117,6 +116,17 @@ export default function ProjectDetail() {
     }
   }
 
+  async function handleTranscribe(video: Video) {
+    setError(null);
+    try {
+      await processVideo(video.id, 'transcribe');
+      const jobs = await listVideoJobs(video.id);
+      setJobsByVideo((current) => ({ ...current, [video.id]: jobs }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start transcription');
+    }
+  }
+
   async function handleDeleteVideo(videoId: number) {
     setError(null);
     try {
@@ -200,6 +210,7 @@ export default function ProjectDetail() {
                 video={video}
                 jobs={jobsByVideo[video.id] ?? []}
                 onExtractAudio={handleExtractAudio}
+                onTranscribe={handleTranscribe}
                 onDelete={handleDeleteVideo}
               />
             ))}

@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     # Background job processing.
     job_workers: int = 2
 
+    # Transcription (architecture §8): provider name + model settings.
+    transcription_provider: str = "whisper"
+    whisper_model: str = "tiny"
+    whisper_device: str = "cpu"
+    whisper_compute_type: str = "int8"
+    whisper_language: str | None = None  # None = auto-detect
+    synthetic_segment_seconds: float = 5.0
+
     @property
     def database_url(self) -> str:
         """SQLite URL derived from the data directory."""

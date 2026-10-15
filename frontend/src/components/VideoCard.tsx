@@ -1,24 +1,35 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { cancelJob } from '../services/jobs';
+import { assetUrl } from '../services/videos';
+import TranscriptViewer from './TranscriptViewer';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
-import { assetUrl } from '../services/videos';
 import { formatDuration, formatFileSize, formatResolution } from '../utils/format';
 
 interface VideoCardProps {
   video: Video;
   jobs: Job[];
   onExtractAudio: (video: Video) => void;
+  onTranscribe: (video: Video) => void;
   onDelete: (videoId: number) => void;
 }
 
 const JOB_LABELS: Record<string, string> = {
   extract_audio: 'Extract audio',
+  transcribe: 'Transcribe',
 };
 
-export default function VideoCard({ video, jobs, onExtractAudio, onDelete }: VideoCardProps) {
+export default function VideoCard({
+  video,
+  jobs,
+  onExtractAudio,
+  onTranscribe,
+  onDelete,
+}: VideoCardProps) {
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const thumbnail = assetUrl(video.thumbnail_url);
   const preview = assetUrl(video.preview_url);
 
@@ -33,6 +44,13 @@ export default function VideoCard({ video, jobs, onExtractAudio, onDelete }: Vid
     } finally {
       setCancelling(false);
     }
+  }
+
+  function seekTo(seconds: number) {
+    const element = videoRef.current;
+    if (!element) return;
+    element.currentTime = seconds;
+    void element.play().catch(() => undefined);
   }
 
   return (
@@ -69,12 +87,18 @@ export default function VideoCard({ video, jobs, onExtractAudio, onDelete }: Vid
             )}
           </dd>
         </dl>
-        {preview && <video className="video-preview" controls preload="metadata" src={preview} />}
+        {preview && (
+          <video ref={videoRef} className="video-preview" controls preload="metadata" src={preview} />
+        )}
 
         {activeJob && (
           <div className="job-progress" data-testid="job-progress">
             <div className="job-progress-header">
-              <span>{activeJob.status === 'queued' ? 'Queued' : 'Processing'}</span>
+              <span>
+                {activeJob.status === 'queued'
+                  ? 'Queued'
+                  : `Processing: ${JOB_LABELS[activeJob.type] ?? activeJob.type}`}
+              </span>
               <span data-testid="job-percent">{Math.round(activeJob.progress * 100)}%</span>
             </div>
             <progress value={activeJob.progress} max={1} />
@@ -102,8 +126,25 @@ export default function VideoCard({ video, jobs, onExtractAudio, onDelete }: Vid
           >
             {JOB_LABELS.extract_audio}
           </button>
+          <button
+            type="button"
+            onClick={() => onTranscribe(video)}
+            disabled={Boolean(activeJob) || !audioReady}
+          >
+            {JOB_LABELS.transcribe}
+          </button>
+          {audioReady && (
+            <button type="button" onClick={() => setShowTranscript((value) => !value)}>
+              {showTranscript ? 'Hide transcript' : 'Show transcript'}
+            </button>
+          )}
           {!activeJob && latestJob?.status === 'failed' && (
-            <button type="button" onClick={() => onExtractAudio(video)}>
+            <button
+              type="button"
+              onClick={() =>
+                latestJob.type === 'transcribe' ? onTranscribe(video) : onExtractAudio(video)
+              }
+            >
               Retry
             </button>
           )}
@@ -129,6 +170,10 @@ export default function VideoCard({ video, jobs, onExtractAudio, onDelete }: Vid
             </button>
           )}
         </div>
+
+        {showTranscript && audioReady && (
+          <TranscriptViewer videoId={video.id} onSeek={seekTo} />
+        )}
       </div>
     </li>
   );

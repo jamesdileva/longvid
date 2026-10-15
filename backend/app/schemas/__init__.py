@@ -3,6 +3,7 @@
 from app.schemas.health import HealthResponse
 from app.schemas.jobs import JobProcessRequest, JobRead
 from app.schemas.projects import ProjectCreate, ProjectRead, ProjectUpdate
+from app.schemas.transcripts import TranscriptRead, TranscriptSegmentRead
 from app.schemas.videos import VideoImportRequest, VideoRead
 
 __all__ = [
@@ -12,6 +13,8 @@ __all__ = [
     "ProjectCreate",
     "ProjectRead",
     "ProjectUpdate",
+    "TranscriptRead",
+    "TranscriptSegmentRead",
     "VideoImportRequest",
     "VideoRead",
 ]

@@ -6,6 +6,7 @@ Import every module here so ``Base.metadata`` is fully populated before
 
 from app.models.processing import JobStatus, JobType, ProcessingJob
 from app.models.project import Project, ProjectStatus
+from app.models.transcript import Transcript, TranscriptSegment
 from app.models.video import Video, VideoStatus
 
 __all__ = [
@@ -14,6 +15,8 @@ __all__ = [
     "ProcessingJob",
     "Project",
     "ProjectStatus",
+    "Transcript",
+    "TranscriptSegment",
     "Video",
     "VideoStatus",
 ]

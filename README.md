@@ -75,6 +75,11 @@ Setup:
 py -3.11 -m venv backend\.venv
 backend\.venv\Scripts\pip install -e backend[dev]
 
+# Real local transcription (faster-whisper + model downloads); optional —
+# without it, transcription runs against a deterministic synthetic provider
+# by setting LONGVID_TRANSCRIPTION_PROVIDER=synthetic
+backend\.venv\Scripts\pip install -e backend[whisper]
+
 # Node workspaces (frontend + electron)
 npm install
 ```

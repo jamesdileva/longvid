@@ -51,6 +51,11 @@ LongVid/
 py -3.11 -m venv backend\.venv
 backend\.venv\Scripts\pip install -e backend[dev]
 
+# Optional: the real local transcription engine (faster-whisper, downloads
+# models on first use). Without it, set LONGVID_TRANSCRIPTION_PROVIDER=synthetic
+# for the deterministic offline stand-in used by tests.
+backend\.venv\Scripts\pip install -e backend[whisper]
+
 # Node (root workspace)
 npm install
 ```

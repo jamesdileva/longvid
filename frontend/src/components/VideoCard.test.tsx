@@ -42,13 +42,23 @@ function makeJob(overrides: Partial<Job> = {}): Job {
   };
 }
 
+function renderCard(video: Video = VIDEO, jobs: Job[] = []) {
+  const handlers = {
+    onExtractAudio: vi.fn(),
+    onTranscribe: vi.fn(),
+    onDelete: vi.fn(),
+  };
+  render(<VideoCard video={video} jobs={jobs} {...handlers} />);
+  return handlers;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 describe('VideoCard', () => {
   it('renders metadata and media elements', () => {
-    render(<VideoCard video={VIDEO} jobs={[]} onExtractAudio={vi.fn()} onDelete={vi.fn()} />);
+    renderCard();
 
     expect(screen.getByText('stream_recording.mp4')).toBeInTheDocument();
     expect(screen.getByTestId('video-duration')).toHaveTextContent('1:35');
@@ -63,24 +73,22 @@ describe('VideoCard', () => {
   });
 
   it('deletes only after inline confirmation', () => {
-    const onDelete = vi.fn();
-    render(<VideoCard video={VIDEO} jobs={[]} onExtractAudio={vi.fn()} onDelete={onDelete} />);
+    const handlers = renderCard();
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    expect(onDelete).not.toHaveBeenCalled();
+    expect(handlers.onDelete).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirm delete' }));
-    expect(onDelete).toHaveBeenCalledWith(7);
+    expect(handlers.onDelete).toHaveBeenCalledWith(7);
   });
 
   it('cancels deletion', () => {
-    const onDelete = vi.fn();
-    render(<VideoCard video={VIDEO} jobs={[]} onExtractAudio={vi.fn()} onDelete={onDelete} />);
+    const handlers = renderCard();
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    expect(onDelete).not.toHaveBeenCalled();
+    expect(handlers.onDelete).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });
 
@@ -95,7 +103,7 @@ describe('VideoCard', () => {
       height: null,
       file_size_bytes: null,
     };
-    render(<VideoCard video={pending} jobs={[]} onExtractAudio={vi.fn()} onDelete={vi.fn()} />);
+    renderCard(pending);
 
     await waitFor(() => {
       expect(screen.getByTestId('video-duration')).toHaveTextContent('—');
@@ -104,57 +112,41 @@ describe('VideoCard', () => {
   });
 
   it('starts audio extraction when requested', () => {
-    const onExtractAudio = vi.fn();
-    render(<VideoCard video={VIDEO} jobs={[]} onExtractAudio={onExtractAudio} onDelete={vi.fn()} />);
+    const handlers = renderCard(); // no audio_path yet
 
     fireEvent.click(screen.getByRole('button', { name: 'Extract audio' }));
 
-    expect(onExtractAudio).toHaveBeenCalledWith(VIDEO);
+    expect(handlers.onExtractAudio).toHaveBeenCalledWith(VIDEO);
   });
 
   it('shows a progress bar for an active job', () => {
-    render(
-      <VideoCard
-        video={VIDEO}
-        jobs={[makeJob({ status: 'running', progress: 0.45 })]}
-        onExtractAudio={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+    renderCard(VIDEO, [makeJob({ status: 'running', progress: 0.45 })]);
 
     const progress = screen.getByRole('progressbar') as HTMLProgressElement;
     expect(progress.value).toBeCloseTo(0.45);
     expect(screen.getByTestId('job-percent')).toHaveTextContent('45%');
-    expect(screen.getByText('Processing')).toBeInTheDocument();
+    expect(screen.getByText('Processing: Extract audio')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Extract audio' })).toBeDisabled();
   });
 
   it('labels queued jobs', () => {
-    render(
-      <VideoCard
-        video={VIDEO}
-        jobs={[makeJob({ status: 'queued', progress: 0 })]}
-        onExtractAudio={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+    renderCard(VIDEO, [makeJob({ status: 'queued', progress: 0 })]);
 
     expect(screen.getByText('Queued')).toBeInTheDocument();
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
+  it('labels a running transcription job', () => {
+    renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' }, [
+      makeJob({ type: 'transcribe', status: 'running', progress: 0.6 }),
+    ]);
+
+    expect(screen.getByText('Processing: Transcribe')).toBeInTheDocument();
+  });
+
   it('cancels an active job', async () => {
-    const cancelSpy = vi.spyOn(jobsService, 'cancelJob').mockResolvedValue(
-      makeJob({ status: 'cancelled' }),
-    );
-    render(
-      <VideoCard
-        video={VIDEO}
-        jobs={[makeJob({ id: 42, status: 'running', progress: 0.2 })]}
-        onExtractAudio={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+    const cancelSpy = vi.spyOn(jobsService, 'cancelJob').mockResolvedValue(makeJob({ status: 'cancelled' }));
+    renderCard(VIDEO, [makeJob({ id: 42, status: 'running', progress: 0.2 })]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel job' }));
 
@@ -164,33 +156,60 @@ describe('VideoCard', () => {
   });
 
   it('shows the error and Retry for a failed job', () => {
-    const onExtractAudio = vi.fn();
-    render(
-      <VideoCard
-        video={VIDEO}
-        jobs={[makeJob({ status: 'failed', error: 'ffmpeg exited with code 1' })]}
-        onExtractAudio={onExtractAudio}
-        onDelete={vi.fn()}
-      />,
-    );
+    const handlers = renderCard(VIDEO, [
+      makeJob({ status: 'failed', error: 'ffmpeg exited with code 1' }),
+    ]);
 
     expect(screen.getByTestId('job-error')).toHaveTextContent('ffmpeg exited with code 1');
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    expect(onExtractAudio).toHaveBeenCalledWith(VIDEO);
+    expect(handlers.onExtractAudio).toHaveBeenCalledWith(VIDEO);
+  });
+
+  it('retries a failed transcription job by re-transcribing', () => {
+    const handlers = renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' }, [
+      makeJob({ type: 'transcribe', status: 'failed', error: 'model unavailable' }),
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(handlers.onTranscribe).toHaveBeenCalled();
   });
 
   it('shows the audio-ready badge and disables extraction', () => {
-    render(
-      <VideoCard
-        video={{ ...VIDEO, audio_path: 'media/audio/7.wav' }}
-        jobs={[]}
-        onExtractAudio={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
+    renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' });
 
     expect(screen.getByTestId('audio-ready')).toHaveTextContent('extracted');
     expect(screen.getByRole('button', { name: 'Extract audio' })).toBeDisabled();
+  });
+
+  it('enables transcription only once audio is extracted', () => {
+    const handlers = renderCard();
+
+    expect(screen.getByRole('button', { name: 'Transcribe' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Extract audio' }));
+    expect(handlers.onExtractAudio).toHaveBeenCalled();
+  });
+
+  it('starts transcription when audio is ready', () => {
+    const handlers = renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transcribe' }));
+
+    expect(handlers.onTranscribe).toHaveBeenCalledWith({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+  });
+
+  it('toggles the transcript viewer when audio exists', async () => {
+    renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show transcript' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Loading transcript|Run transcription/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide transcript' }));
+    expect(screen.queryByText(/Loading transcript/)).not.toBeInTheDocument();
   });
 });
