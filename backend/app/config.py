@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     preview_width: int = 480
     preview_seconds: float = 4.0
 
+    # Transcription-oriented audio extraction (implementation-guide §11).
+    audio_sample_rate: int = 16000
+    audio_channels: int = 1
+
+    # Background job processing.
+    job_workers: int = 2
+
     @property
     def database_url(self) -> str:
         """SQLite URL derived from the data directory."""

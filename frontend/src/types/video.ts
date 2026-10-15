@@ -16,6 +16,7 @@ export interface Video {
   sample_rate: number | null;
   channels: number | null;
   file_size_bytes: number | null;
+  audio_path: string | null;
   thumbnail_url: string | null;
   preview_url: string | null;
   created_at: string;

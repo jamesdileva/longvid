@@ -1,27 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import VideoImportForm from '../components/VideoImportForm';
 import { getProject, updateProject } from '../services/projects';
 import { deleteVideo, importVideo, listVideos } from '../services/videos';
+import { listVideoJobs, processVideo } from '../services/jobs';
 import type { Project } from '../types/project';
 import type { Video } from '../types/video';
+import type { Job } from '../types/job';
+import { isActiveJob } from '../types/job';
 import { formatTimestamp, pluralize } from '../utils/format';
+
+const JOB_POLL_INTERVAL_MS = 1500;
 
 export default function ProjectDetail() {
   const { id = '' } = useParams();
   const [project, setProject] = useState<Project | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [jobsByVideo, setJobsByVideo] = useState<Record<number, Job[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  async function loadVideos() {
-    try {
-      setVideos(await listVideos(id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load videos');
-    }
-  }
 
   useEffect(() => {
     let active = true;
@@ -45,13 +43,77 @@ export default function ProjectDetail() {
     };
   }, [id]);
 
+  // Load jobs for the visible videos, then poll while any job is active.
+  useEffect(() => {
+    if (videos.length === 0) {
+      setJobsByVideo({});
+      return;
+    }
+    let active = true;
+    async function loadJobs() {
+      try {
+        const entries = await Promise.all(
+          videos.map(async (video) => [video.id, await listVideoJobs(video.id)] as const),
+        );
+        if (active) setJobsByVideo(Object.fromEntries(entries));
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : 'Failed to load jobs');
+      }
+    }
+    void loadJobs();
+    return () => {
+      active = false;
+    };
+  }, [videos]);
+
+  const hasActiveJobs = Object.values(jobsByVideo).some((jobs) => jobs.some(isActiveJob));
+
+  // When jobs settle, reload videos so generated state (e.g. audio_path) appears.
+  const hadActiveJobs = useRef(false);
+  useEffect(() => {
+    if (hasActiveJobs) {
+      hadActiveJobs.current = true;
+      return;
+    }
+    if (!hadActiveJobs.current) return;
+    hadActiveJobs.current = false;
+    let active = true;
+    void listVideos(id).then((fresh) => {
+      if (active) setVideos(fresh);
+    });
+    return () => {
+      active = false;
+    };
+  }, [hasActiveJobs, id]);
+
+  useEffect(() => {
+    if (!hasActiveJobs) return;
+    const timer = setInterval(() => {
+      void Promise.all(
+        videos.map(async (video) => [video.id, await listVideoJobs(video.id)] as const),
+      ).then((entries) => setJobsByVideo(Object.fromEntries(entries)));
+    }, JOB_POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [hasActiveJobs, videos]);
+
   async function handleImport(path: string) {
     setError(null);
     try {
       await importVideo(id, path);
-      await loadVideos();
+      setVideos(await listVideos(id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import video');
+    }
+  }
+
+  async function handleExtractAudio(video: Video) {
+    setError(null);
+    try {
+      await processVideo(video.id, 'extract_audio');
+      const jobs = await listVideoJobs(video.id);
+      setJobsByVideo((current) => ({ ...current, [video.id]: jobs }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start extraction');
     }
   }
 
@@ -59,7 +121,7 @@ export default function ProjectDetail() {
     setError(null);
     try {
       await deleteVideo(videoId);
-      await loadVideos();
+      setVideos(await listVideos(id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete video');
     }
@@ -133,7 +195,13 @@ export default function ProjectDetail() {
         ) : (
           <ul className="video-grid" data-testid="video-list">
             {videos.map((video) => (
-              <VideoCard key={video.id} video={video} onDelete={handleDeleteVideo} />
+              <VideoCard
+                key={video.id}
+                video={video}
+                jobs={jobsByVideo[video.id] ?? []}
+                onExtractAudio={handleExtractAudio}
+                onDelete={handleDeleteVideo}
+              />
             ))}
           </ul>
         )}

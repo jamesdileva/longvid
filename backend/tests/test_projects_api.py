@@ -11,13 +11,14 @@ from app.services import workspace as workspace_service
 EXPECTED_SUBDIRS = {
     "source",
     "media",
-    "analysis",
-    "clips",
-    "exports",
     "media/thumbnails",
     "media/previews",
+    "media/audio",
+    "analysis",
+    "clips",
     "clips/generated",
     "clips/previews",
+    "exports",
     "exports/shorts",
     "exports/youtube",
 }

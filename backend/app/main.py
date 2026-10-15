@@ -19,6 +19,7 @@ from app import __version__
 from app.api import api_router
 from app.config import get_settings
 from app.database import init_db
+from app.workers.queue import shutdown_queue
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger("longvid")
@@ -26,12 +27,14 @@ logger = logging.getLogger("longvid")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Initialize storage on startup."""
+    """Initialize storage on startup; drain the job queue on shutdown."""
     settings = get_settings()
     Path(settings.data_dir).mkdir(parents=True, exist_ok=True)
     init_db()
     logger.info("LongVid backend initialized (data dir: %s)", settings.data_dir)
     yield
+    shutdown_queue()
+    logger.info("LongVid backend stopped")
 
 
 def create_app() -> FastAPI:

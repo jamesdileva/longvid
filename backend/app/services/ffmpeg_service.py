@@ -18,6 +18,7 @@ from app.utils.files import unique_filename
 
 _PROBE_TIMEOUT = 60
 _FFMPEG_TIMEOUT = 300
+_WAV_HEADER_SIZE = 44
 
 
 class FFmpegError(RuntimeError):
@@ -176,6 +177,75 @@ def generate_preview(
     if result.returncode != 0 or not output_path.is_file():
         raise FFmpegError(f"Preview generation failed: {result.stderr.strip()}")
     return output_path
+
+
+def extract_audio(video_path: Path, output_path: Path, sample_rate: int, channels: int) -> Path:
+    """Extract audio as mono WAV for transcription (implementation-guide §11).
+
+    Output is PCM s16le at the target sample rate; the source video is only
+    read. Used by the EXTRACT_AUDIO pipeline stage.
+    """
+    settings = get_settings()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    sample_rate = sample_rate or settings.audio_sample_rate
+    channels = channels or settings.audio_channels
+    result = _run(
+        [
+            settings.ffmpeg_path,
+            "-y",
+            "-i",
+            str(video_path),
+            "-vn",
+            "-ac",
+            str(channels),
+            "-ar",
+            str(sample_rate),
+            "-c:a",
+            "pcm_s16le",
+            str(output_path),
+        ],
+        timeout=_FFMPEG_TIMEOUT,
+    )
+    if result.returncode != 0:
+        raise FFmpegError(f"Audio extraction failed: {result.stderr.strip()}")
+    if not _is_valid_wav(output_path):
+        raise FFmpegError("Audio extraction produced an empty or invalid WAV")
+    return output_path
+
+
+def cut_clip(video_path: Path, output_path: Path, start_seconds: float, end_seconds: float) -> Path:
+    """Cut a time range out of a video into a new MP4 (stream copy)."""
+    settings = get_settings()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    duration = max(end_seconds - start_seconds, 0.1)
+    result = _run(
+        [
+            settings.ffmpeg_path,
+            "-y",
+            "-ss",
+            f"{max(start_seconds, 0):.3f}",
+            "-i",
+            str(video_path),
+            "-t",
+            f"{duration:.3f}",
+            "-c",
+            "copy",
+            str(output_path),
+        ],
+        timeout=_FFMPEG_TIMEOUT,
+    )
+    if result.returncode != 0 or not output_path.is_file():
+        raise FFmpegError(f"Clip cut failed: {result.stderr.strip()}")
+    return output_path
+
+
+def _is_valid_wav(path: Path) -> bool:
+    """Cheap structural check: RIFF/WAVE header plus a plausible data size."""
+    if not path.is_file() or path.stat().st_size <= _WAV_HEADER_SIZE:
+        return False
+    with path.open("rb") as handle:
+        header = handle.read(12)
+    return header[:4] == b"RIFF" and header[8:12] == b"WAVE"
 
 
 def ensure_tool_available(binary: str) -> bool:

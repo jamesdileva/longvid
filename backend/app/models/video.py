@@ -55,6 +55,7 @@ class Video(Base):
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     thumbnail_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     preview_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    audio_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow, nullable=False)
 

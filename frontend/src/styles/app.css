@@ -277,3 +277,23 @@ a {
   margin-top: 12px;
   width: 100%;
 }
+
+.job-progress {
+  margin-top: 12px;
+}
+
+.job-progress-header {
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.job-progress progress {
+  width: 100%;
+}
+
+.status-pill.ready {
+  background: rgba(51, 196, 129, 0.15);
+  color: var(--ok);
+}

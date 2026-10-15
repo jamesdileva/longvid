@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -72,6 +74,63 @@ class TestGeneratePreview:
 
         info = ffmpeg_service.probe_file(out)
         assert info.duration_seconds <= 2.5
+
+
+@requires_ffmpeg
+class TestExtractAudio:
+    def test_produces_mono_16khz_wav(self, synthetic_video: Path, tmp_path: Path) -> None:
+        out = tmp_path / "audio.wav"
+
+        result = ffmpeg_service.extract_audio(synthetic_video, out, sample_rate=16000, channels=1)
+
+        assert result.is_file()
+        header = result.read_bytes()[:12]
+        assert header[:4] == b"RIFF"
+        assert header[8:12] == b"WAVE"
+
+        probe = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=sample_rate,channels",
+                "-of",
+                "json",
+                str(result),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        streams = json.loads(probe.stdout)["streams"]
+        assert streams[0]["sample_rate"] == "16000"
+        assert streams[0]["channels"] == 1
+
+    def test_video_without_audio_raises(self, tmp_path: Path) -> None:
+        silent = tmp_path / "silent.mp4"
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=duration=1:size=160x120:rate=5",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                str(silent),
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        with pytest.raises(FFmpegError):
+            ffmpeg_service.extract_audio(silent, tmp_path / "out.wav", 16000, 1)
 
 
 @requires_ffmpeg

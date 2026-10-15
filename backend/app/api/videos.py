@@ -10,11 +10,13 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import VideoImportRequest, VideoRead
+from app.schemas import JobProcessRequest, JobRead, VideoImportRequest, VideoRead
+from app.services import jobs as job_service
 from app.services import projects as project_service
 from app.services import videos as video_service
 from app.services.videos import VideoImportError
 from app.services.workspace import WorkspaceError, asset_path
+from app.workers.queue import get_queue
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -65,6 +67,25 @@ def delete_video(video_id: int, db: DbSession) -> None:
     """Remove a video and its generated workspace assets."""
     if not video_service.delete_video(db, video_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Video not found")
+
+
+@router.post(
+    "/videos/{video_id}/process", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED
+)
+def process_video(video_id: int, payload: JobProcessRequest, db: DbSession) -> JobRead:
+    """Queue a background job for a video and return immediately.
+
+    Long work never blocks the HTTP request (architecture §19); the client
+    polls ``GET /api/jobs/{id}`` for progress.
+    """
+    if video_service.get_video(db, video_id) is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Video not found")
+    if job_service.active_job_exists(db, video_id, payload.type):
+        raise HTTPException(status.HTTP_409_CONFLICT, "A job of this type is already active")
+
+    job = job_service.create_job(db, video_id, payload.type)
+    get_queue().submit(job.id)
+    return JobRead.model_validate(job)
 
 
 @router.get("/videos/{video_id}/thumbnail")

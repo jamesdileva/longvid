@@ -33,6 +33,7 @@ class VideoRead(BaseModel):
     sample_rate: int | None
     channels: int | None
     file_size_bytes: int | None
+    audio_path: str | None
     created_at: datetime
     updated_at: datetime
 
