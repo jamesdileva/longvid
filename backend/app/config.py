@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     whisper_language: str | None = None  # None = auto-detect
     synthetic_segment_seconds: float = 5.0
 
+    # Analysis thresholds (roadmap 6.2/6.4) — all deterministic defaults.
+    scene_threshold: float = 0.3
+    silence_threshold_db: float = -45.0
+    min_silence_seconds: float = 1.5
+    peak_threshold_db: float = -8.0
+    analysis_window_seconds: float = 10.0
+    speech_density_threshold: float = 0.6
+
     @property
     def database_url(self) -> str:
         """SQLite URL derived from the data directory."""

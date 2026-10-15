@@ -46,6 +46,7 @@ function renderCard(video: Video = VIDEO, jobs: Job[] = []) {
   const handlers = {
     onExtractAudio: vi.fn(),
     onTranscribe: vi.fn(),
+    onAnalyze: vi.fn(),
     onDelete: vi.fn(),
   };
   render(<VideoCard video={video} jobs={jobs} {...handlers} />);
@@ -144,6 +145,14 @@ describe('VideoCard', () => {
     expect(screen.getByText('Processing: Transcribe')).toBeInTheDocument();
   });
 
+  it('labels a running analysis job', () => {
+    renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' }, [
+      makeJob({ type: 'analyze_events', status: 'running', progress: 0.3 }),
+    ]);
+
+    expect(screen.getByText('Processing: Analyze')).toBeInTheDocument();
+  });
+
   it('cancels an active job', async () => {
     const cancelSpy = vi.spyOn(jobsService, 'cancelJob').mockResolvedValue(makeJob({ status: 'cancelled' }));
     renderCard(VIDEO, [makeJob({ id: 42, status: 'running', progress: 0.2 })]);
@@ -198,6 +207,36 @@ describe('VideoCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Transcribe' }));
 
     expect(handlers.onTranscribe).toHaveBeenCalledWith({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+  });
+
+  it('starts analysis when audio is ready', () => {
+    const handlers = renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze' }));
+
+    expect(handlers.onAnalyze).toHaveBeenCalledWith({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+  });
+
+  it('disables analysis until audio is extracted', () => {
+    renderCard();
+
+    expect(screen.getByRole('button', { name: 'Analyze' })).toBeDisabled();
+  });
+
+  it('toggles the analysis panel', async () => {
+    const analysis = await import('../services/analysis');
+    vi.spyOn(analysis, 'listScenes').mockResolvedValue([]);
+    vi.spyOn(analysis, 'listEvents').mockResolvedValue([]);
+    renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show analysis' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('analysis-panel')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide analysis' }));
+    expect(screen.queryByTestId('analysis-panel')).not.toBeInTheDocument();
   });
 
   it('toggles the transcript viewer when audio exists', async () => {

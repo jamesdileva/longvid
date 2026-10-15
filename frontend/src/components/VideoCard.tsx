@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { cancelJob } from '../services/jobs';
 import { assetUrl } from '../services/videos';
+import AnalysisPanel from './AnalysisPanel';
 import TranscriptViewer from './TranscriptViewer';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
@@ -11,12 +12,14 @@ interface VideoCardProps {
   jobs: Job[];
   onExtractAudio: (video: Video) => void;
   onTranscribe: (video: Video) => void;
+  onAnalyze: (video: Video) => void;
   onDelete: (videoId: number) => void;
 }
 
 const JOB_LABELS: Record<string, string> = {
   extract_audio: 'Extract audio',
   transcribe: 'Transcribe',
+  analyze_events: 'Analyze',
 };
 
 export default function VideoCard({
@@ -24,11 +27,13 @@ export default function VideoCard({
   jobs,
   onExtractAudio,
   onTranscribe,
+  onAnalyze,
   onDelete,
 }: VideoCardProps) {
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const thumbnail = assetUrl(video.thumbnail_url);
   const preview = assetUrl(video.preview_url);
@@ -133,6 +138,16 @@ export default function VideoCard({
           >
             {JOB_LABELS.transcribe}
           </button>
+          <button
+            type="button"
+            onClick={() => onAnalyze(video)}
+            disabled={Boolean(activeJob) || !audioReady}
+          >
+            {JOB_LABELS.analyze_events}
+          </button>
+          <button type="button" onClick={() => setShowAnalysis((value) => !value)}>
+            {showAnalysis ? 'Hide analysis' : 'Show analysis'}
+          </button>
           {audioReady && (
             <button type="button" onClick={() => setShowTranscript((value) => !value)}>
               {showTranscript ? 'Hide transcript' : 'Show transcript'}
@@ -174,6 +189,8 @@ export default function VideoCard({
         {showTranscript && audioReady && (
           <TranscriptViewer videoId={video.id} onSeek={seekTo} />
         )}
+
+        {showAnalysis && <AnalysisPanel videoId={video.id} onSeek={seekTo} />}
       </div>
     </li>
   );

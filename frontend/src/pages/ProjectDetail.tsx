@@ -127,6 +127,17 @@ export default function ProjectDetail() {
     }
   }
 
+  async function handleAnalyze(video: Video) {
+    setError(null);
+    try {
+      await processVideo(video.id, 'analyze_events');
+      const jobs = await listVideoJobs(video.id);
+      setJobsByVideo((current) => ({ ...current, [video.id]: jobs }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start analysis');
+    }
+  }
+
   async function handleDeleteVideo(videoId: number) {
     setError(null);
     try {
@@ -211,6 +222,7 @@ export default function ProjectDetail() {
                 jobs={jobsByVideo[video.id] ?? []}
                 onExtractAudio={handleExtractAudio}
                 onTranscribe={handleTranscribe}
+                onAnalyze={handleAnalyze}
                 onDelete={handleDeleteVideo}
               />
             ))}

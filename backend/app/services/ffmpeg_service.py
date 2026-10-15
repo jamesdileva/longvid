@@ -8,6 +8,7 @@ the project workspace; user originals are never modified.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -19,6 +20,8 @@ from app.utils.files import unique_filename
 _PROBE_TIMEOUT = 60
 _FFMPEG_TIMEOUT = 300
 _WAV_HEADER_SIZE = 44
+# ffmpeg reports digital silence as -inf; floor it so detectors can see it.
+_SILENCE_FLOOR_DB = -120.0
 
 
 class FFmpegError(RuntimeError):
@@ -39,6 +42,22 @@ class MediaInfo:
     channels: int | None
     file_size_bytes: int
     format_name: str
+
+
+@dataclass(frozen=True)
+class SceneBoundary:
+    """A detected scene change: timestamp plus detection strength."""
+
+    time_seconds: float
+    score: float
+
+
+@dataclass(frozen=True)
+class AudioLevel:
+    """One sampled audio level: RMS in dBFS at a point in time."""
+
+    time_seconds: float
+    rms_db: float
 
 
 def _run(command: list[str], timeout: int) -> subprocess.CompletedProcess:
@@ -246,6 +265,94 @@ def _is_valid_wav(path: Path) -> bool:
     with path.open("rb") as handle:
         header = handle.read(12)
     return header[:4] == b"RIFF" and header[8:12] == b"WAVE"
+
+
+def detect_scenes(video_path: Path, threshold: float) -> list[SceneBoundary]:
+    """Detect scene changes via FFmpeg's scene score filter.
+
+    Uses libavfilter's frame-difference scene score (no external detector
+    dependency); every FFmpeg call still flows through this service.
+    """
+    settings = get_settings()
+    if not video_path.is_file():
+        raise FFmpegError(f"Media file does not exist: {video_path}")
+    result = _run(
+        [
+            settings.ffmpeg_path,
+            "-i",
+            str(video_path),
+            "-vf",
+            f"select='gt(scene,{threshold})',showinfo",
+            "-f",
+            "null",
+            "-",
+        ],
+        timeout=_FFMPEG_TIMEOUT,
+    )
+    # showinfo writes selected frames to stderr; parse pts_time + scene score.
+    boundaries: list[SceneBoundary] = []
+    for line in result.stderr.splitlines():
+        if "Parsed_showinfo" not in line:
+            continue
+        time_match = re.search(r"pts_time:([0-9.]+)", line)
+        score_match = re.search(r"scene_score=([0-9.]+)", line)
+        if time_match is None:
+            continue
+        boundaries.append(
+            SceneBoundary(
+                time_seconds=float(time_match.group(1)),
+                score=float(score_match.group(1)) if score_match else float(threshold),
+            )
+        )
+    return boundaries
+
+
+def audio_levels(audio_path: Path) -> list[AudioLevel]:
+    """Sample the audio track's RMS level per frame using astats.
+
+    Returns an empty list when the file has no decodable audio.
+    """
+    settings = get_settings()
+    if not audio_path.is_file():
+        raise FFmpegError(f"Media file does not exist: {audio_path}")
+    result = _run(
+        [
+            settings.ffmpeg_path,
+            "-i",
+            str(audio_path),
+            "-af",
+            "astats=metadata=1:reset=1,ametadata=mode=print:file=-:key=lavfi.astats.Overall.RMS_level",
+            "-f",
+            "null",
+            "-",
+        ],
+        timeout=_FFMPEG_TIMEOUT,
+    )
+    output = result.stdout + result.stderr
+    levels: list[AudioLevel] = []
+    current_time: float | None = None
+    for line in output.splitlines():
+        time_match = re.search(r"pts_time:([0-9.]+)", line)
+        if time_match:
+            current_time = float(time_match.group(1))
+            continue
+        if "RMS_level=" in line:
+            value = line.split("RMS_level=", maxsplit=1)[1].strip()
+            if current_time is None:
+                continue
+            if value in {"nan", "inf", "-nan"}:
+                continue
+            if value == "-inf":
+                # Digital silence: floor it so silence detection still sees it.
+                levels.append(AudioLevel(time_seconds=current_time, rms_db=_SILENCE_FLOOR_DB))
+                continue
+            try:
+                rms_db = float(value)
+            except ValueError:
+                continue
+            levels.append(AudioLevel(time_seconds=current_time, rms_db=rms_db))
+    levels.sort(key=lambda level: level.time_seconds)
+    return levels
 
 
 def ensure_tool_available(binary: str) -> bool:
