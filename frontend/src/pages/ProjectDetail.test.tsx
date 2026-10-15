@@ -5,9 +5,11 @@ import ProjectDetail from './ProjectDetail';
 import * as projectsService from '../services/projects';
 import * as videosService from '../services/videos';
 import * as jobsService from '../services/jobs';
+import * as candidatesService from '../services/candidates';
 import type { Project } from '../types/project';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
+import type { Candidate } from '../types/candidate';
 
 const PROJECT: Project = {
   id: 'a'.repeat(32),
@@ -42,6 +44,27 @@ const VIDEO: Video = {
   updated_at: '2026-10-13T14:00:00',
 };
 
+const CANDIDATE: Candidate = {
+  id: 3,
+  video_id: VIDEO.id,
+  start_seconds: 812.2,
+  end_seconds: 851.8,
+  status: 'pending',
+  semantic_score: 0.91,
+  audio_score: 0.79,
+  visual_score: 0.91,
+  context_score: 0.83,
+  standalone_score: 0.9,
+  novelty_score: 1,
+  overall_score: 0.86,
+  category: 'reaction',
+  reason: 'High-energy reaction followed by a win',
+  source: 'fake',
+  event_ids: '3,7',
+  created_at: '2026-10-14T10:00:00',
+  updated_at: '2026-10-14T10:00:00',
+};
+
 const COMPLETED_JOB: Job = {
   id: 3,
   video_id: VIDEO.id,
@@ -65,11 +88,12 @@ function renderDetail(id = PROJECT.id) {
   );
 }
 
-/** Base mocks: project loads, one video, no jobs. */
+/** Base mocks: project loads, one video, no jobs, no candidates. */
 function mockBase() {
   vi.spyOn(projectsService, 'getProject').mockResolvedValue(PROJECT);
   vi.spyOn(videosService, 'listVideos').mockResolvedValue([VIDEO]);
   vi.spyOn(jobsService, 'listVideoJobs').mockResolvedValue([]);
+  vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue([]);
 }
 
 afterEach(() => {
@@ -119,6 +143,7 @@ describe('ProjectDetail videos section', () => {
     vi.spyOn(projectsService, 'getProject').mockResolvedValue(PROJECT);
     vi.spyOn(videosService, 'listVideos').mockResolvedValue([]);
     vi.spyOn(jobsService, 'listVideoJobs').mockResolvedValue([]);
+    vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue([]);
     vi.spyOn(videosService, 'importVideo').mockRejectedValue(new Error('Unsupported file type. Allowed: .mp4'));
 
     renderDetail();
@@ -206,6 +231,52 @@ describe('ProjectDetail videos section', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('Project not found');
+    });
+  });
+
+  it('shows generated candidates with accept/reject', async () => {
+    mockBase();
+    vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue([CANDIDATE]);
+    const updateSpy = vi
+      .spyOn(candidatesService, 'updateCandidateStatus')
+      .mockImplementation(
+        async (id: number, status: 'accepted' | 'rejected' | 'pending') => ({
+          ...CANDIDATE,
+          id,
+          status,
+        }),
+      );
+
+    renderDetail();
+    await waitFor(() => {
+      expect(screen.getByTestId('candidates-panel')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('candidate-score')).toHaveTextContent('86');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(3, 'accepted');
+    });
+  });
+
+  it('starts a generation job from the video card', async () => {
+    mockBase();
+    vi.spyOn(videosService, 'listVideos').mockResolvedValue([
+      { ...VIDEO, audio_path: 'media/audio/7.wav' },
+    ]);
+    const generateSpy = vi
+      .spyOn(candidatesService, 'generateCandidates')
+      .mockResolvedValue({ job_id: 12, status: 'queued' });
+
+    renderDetail();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Generate clips' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate clips' }));
+
+    await waitFor(() => {
+      expect(generateSpy).toHaveBeenCalledWith(VIDEO.id);
     });
   });
 

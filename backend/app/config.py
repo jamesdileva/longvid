@@ -58,6 +58,32 @@ class Settings(BaseSettings):
     analysis_window_seconds: float = 10.0
     speech_density_threshold: float = 0.6
 
+    # Semantic analysis (roadmap 7): local LLM provider.
+    llm_provider: str = "ollama"  # ollama | fake (deterministic, tests)
+    ollama_host: str = "http://127.0.0.1:11434"
+    ollama_model: str = "llama3.2"
+    ollama_timeout_seconds: float = 120.0
+    llm_temperature: float = 0.2
+    # Set false to generate candidates from deterministic signals only.
+    llm_enabled: bool = True
+
+    # Semantic windowing and candidate padding (implementation-guide §15/§17).
+    semantic_window_seconds: float = 30.0
+    candidate_pre_roll_seconds: float = 5.0
+    candidate_post_roll_seconds: float = 8.0
+    candidate_min_seconds: float = 15.0
+    candidate_max_seconds: float = 90.0
+
+    # Candidate scoring weights (implementation-guide §16).
+    scoring_weights: dict[str, float] = {
+        "semantic": 0.30,
+        "audio": 0.15,
+        "visual": 0.15,
+        "context": 0.15,
+        "standalone": 0.15,
+        "novelty": 0.10,
+    }
+
     @property
     def database_url(self) -> str:
         """SQLite URL derived from the data directory."""

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import CandidatesPanel from '../components/CandidatesPanel';
 import VideoCard from '../components/VideoCard';
 import VideoImportForm from '../components/VideoImportForm';
 import { getProject, updateProject } from '../services/projects';
 import { deleteVideo, importVideo, listVideos } from '../services/videos';
+import { generateCandidates } from '../services/candidates';
 import { listVideoJobs, processVideo } from '../services/jobs';import type { Project } from '../types/project';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
@@ -19,6 +21,18 @@ export default function ProjectDetail() {
   const [jobsByVideo, setJobsByVideo] = useState<Record<number, Job[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const videoElements = useRef(new Map<number, HTMLVideoElement | null>());
+
+  const registerVideoElement = (videoId: number, element: HTMLVideoElement | null) => {
+    videoElements.current.set(videoId, element);
+  };
+
+  function seekVideo(videoId: number, seconds: number) {
+    const element = videoElements.current.get(videoId);
+    if (!element) return;
+    element.currentTime = seconds;
+    void element.play().catch(() => undefined);
+  }
 
   useEffect(() => {
     let active = true;
@@ -138,6 +152,17 @@ export default function ProjectDetail() {
     }
   }
 
+  async function handleGenerateCandidates(video: Video) {
+    setError(null);
+    try {
+      await generateCandidates(video.id);
+      const jobs = await listVideoJobs(video.id);
+      setJobsByVideo((current) => ({ ...current, [video.id]: jobs }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start candidate generation');
+    }
+  }
+
   async function handleDeleteVideo(videoId: number) {
     setError(null);
     try {
@@ -223,7 +248,9 @@ export default function ProjectDetail() {
                 onExtractAudio={handleExtractAudio}
                 onTranscribe={handleTranscribe}
                 onAnalyze={handleAnalyze}
+                onGenerateCandidates={handleGenerateCandidates}
                 onDelete={handleDeleteVideo}
+                registerElement={(element) => registerVideoElement(video.id, element)}
               />
             ))}
           </ul>
@@ -232,7 +259,11 @@ export default function ProjectDetail() {
 
       <div className="panel">
         <h2>Clips</h2>
-        <p className="empty-note">Highlight detection and clipping arrive in later phases.</p>
+        <CandidatesPanel
+          projectId={id}
+          videos={videos.map((video) => ({ id: video.id, filename: video.filename }))}
+          onSeekVideo={seekVideo}
+        />
       </div>
     </section>
   );

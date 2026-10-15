@@ -47,6 +47,7 @@ function renderCard(video: Video = VIDEO, jobs: Job[] = []) {
     onExtractAudio: vi.fn(),
     onTranscribe: vi.fn(),
     onAnalyze: vi.fn(),
+    onGenerateCandidates: vi.fn(),
     onDelete: vi.fn(),
   };
   render(<VideoCard video={video} jobs={jobs} {...handlers} />);
@@ -215,6 +216,28 @@ describe('VideoCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Analyze' }));
 
     expect(handlers.onAnalyze).toHaveBeenCalledWith({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+  });
+
+  it('starts candidate generation when audio is ready', () => {
+    const handlers = renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate clips' }));
+
+    expect(handlers.onGenerateCandidates).toHaveBeenCalled();
+  });
+
+  it('disables generation until audio is extracted', () => {
+    renderCard();
+
+    expect(screen.getByRole('button', { name: 'Generate clips' })).toBeDisabled();
+  });
+
+  it('labels a running candidate generation job', () => {
+    renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' }, [
+      makeJob({ type: 'generate_candidates', status: 'running', progress: 0.8 }),
+    ]);
+
+    expect(screen.getByText('Processing: Generate clips')).toBeInTheDocument();
   });
 
   it('disables analysis until audio is extracted', () => {

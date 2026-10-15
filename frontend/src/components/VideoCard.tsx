@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cancelJob } from '../services/jobs';
 import { assetUrl } from '../services/videos';
 import AnalysisPanel from './AnalysisPanel';
@@ -13,13 +13,18 @@ interface VideoCardProps {
   onExtractAudio: (video: Video) => void;
   onTranscribe: (video: Video) => void;
   onAnalyze: (video: Video) => void;
+  onGenerateCandidates: (video: Video) => void;
   onDelete: (videoId: number) => void;
+  /** Registers the preview <video> element so parents can seek it. */
+  registerElement?: (element: HTMLVideoElement | null) => void;
 }
 
 const JOB_LABELS: Record<string, string> = {
   extract_audio: 'Extract audio',
   transcribe: 'Transcribe',
   analyze_events: 'Analyze',
+  generate_candidates: 'Generate clips',
+  score_candidates: 'Re-score clips',
 };
 
 export default function VideoCard({
@@ -28,7 +33,9 @@ export default function VideoCard({
   onExtractAudio,
   onTranscribe,
   onAnalyze,
+  onGenerateCandidates,
   onDelete,
+  registerElement,
 }: VideoCardProps) {
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -37,6 +44,11 @@ export default function VideoCard({
   const videoRef = useRef<HTMLVideoElement>(null);
   const thumbnail = assetUrl(video.thumbnail_url);
   const preview = assetUrl(video.preview_url);
+
+  useEffect(() => {
+    registerElement?.(videoRef.current);
+    return () => registerElement?.(null);
+  }, [registerElement]);
 
   const activeJob = jobs.find((job) => job.status === 'queued' || job.status === 'running');
   const latestJob = jobs[0];
@@ -144,6 +156,13 @@ export default function VideoCard({
             disabled={Boolean(activeJob) || !audioReady}
           >
             {JOB_LABELS.analyze_events}
+          </button>
+          <button
+            type="button"
+            onClick={() => onGenerateCandidates(video)}
+            disabled={Boolean(activeJob) || !audioReady}
+          >
+            {JOB_LABELS.generate_candidates}
           </button>
           <button type="button" onClick={() => setShowAnalysis((value) => !value)}>
             {showAnalysis ? 'Hide analysis' : 'Show analysis'}

@@ -70,8 +70,9 @@ def synthetic_video(tmp_path_factory) -> Path:
 def isolated_env(tmp_path, monkeypatch) -> Iterator[None]:
     """Point the app at a throwaway data dir and clear cached settings/engine."""
     monkeypatch.setenv("LONGVID_DATA_DIR", str(tmp_path / "data"))
-    # Tests always use the deterministic synthetic transcription provider.
+    # Tests always use the deterministic providers (no model downloads/servers).
     monkeypatch.setenv("LONGVID_TRANSCRIPTION_PROVIDER", "synthetic")
+    monkeypatch.setenv("LONGVID_LLM_PROVIDER", "fake")
     get_settings.cache_clear()
     reset_caches()
     init_db()
