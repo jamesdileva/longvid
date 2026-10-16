@@ -126,6 +126,8 @@ def generate_candidates(db: Session, job: ProcessingJob) -> None:
     job_service.update_progress(db, job, 0.7)
 
     candidates = _score_candidates(selected, duration, settings)
+    # Candidate ids change on regeneration; drop stale cached thumbnails.
+    candidate_service.clear_candidate_thumbnails(video.project_id, video.id)
     candidate_service.replace_candidates(db, video.id, candidates)
     logger.info("Generated %d candidates for video %s", len(candidates), video.id)
     job_service.complete_job(db, job)

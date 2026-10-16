@@ -6,6 +6,7 @@ Steps: validate -> copy -> probe -> thumbnail -> preview -> persist.
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from sqlalchemy import select
@@ -123,6 +124,11 @@ def _remove_assets(video: Video) -> None:
         path = (workspace / relative).resolve()
         if path.is_file() and _is_inside(path, workspace):
             path.unlink()
+
+    # Per-candidate thumbnails live in a directory owned by this video.
+    candidate_thumbs = workspace / "media" / "candidate-thumbs" / str(video.id)
+    if candidate_thumbs.is_dir() and _is_inside(candidate_thumbs, workspace):
+        shutil.rmtree(candidate_thumbs, ignore_errors=True)
 
 
 def _is_inside(path: Path, root: Path) -> bool:

@@ -14,6 +14,7 @@ EXPECTED_SUBDIRS = {
     "media/thumbnails",
     "media/previews",
     "media/audio",
+    "media/candidate-thumbs",
     "analysis",
     "clips",
     "clips/generated",

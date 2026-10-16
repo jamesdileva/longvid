@@ -261,7 +261,11 @@ export default function ProjectDetail() {
         <h2>Clips</h2>
         <CandidatesPanel
           projectId={id}
-          videos={videos.map((video) => ({ id: video.id, filename: video.filename }))}
+          videos={videos.map((video) => ({
+            id: video.id,
+            filename: video.filename,
+            preview_url: video.preview_url,
+          }))}
           onSeekVideo={seekVideo}
         />
       </div>

@@ -730,6 +730,7 @@ GET /videos/{id}/transcript
 GET /videos/{id}/scenes
 GET /videos/{id}/events
 GET /videos/{id}/candidates
+GET /candidates/{id}/thumbnail
 POST /videos/{id}/analyze
 ```
 
@@ -831,7 +832,8 @@ project/
 ├── media/
 │   ├── audio.wav
 │   ├── thumbnails/
-│   └── previews/
+│   ├── previews/
+│   └── candidate-thumbs/
 │
 ├── analysis/
 │   ├── transcript.json

@@ -61,6 +61,7 @@ const CANDIDATE: Candidate = {
   reason: 'High-energy reaction followed by a win',
   source: 'fake',
   event_ids: '3,7',
+  thumbnail_url: '/api/candidates/3/thumbnail',
   created_at: '2026-10-14T10:00:00',
   updated_at: '2026-10-14T10:00:00',
 };

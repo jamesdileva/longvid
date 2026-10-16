@@ -19,6 +19,7 @@ export interface Candidate {
   reason: string | null;
   source: string;
   event_ids: string | null;
+  thumbnail_url: string;
   created_at: string;
   updated_at: string;
 }

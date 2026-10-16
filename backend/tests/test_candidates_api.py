@@ -209,6 +209,60 @@ class TestGenerateCandidates:
 
 
 @requires_ffmpeg
+class TestCandidateThumbnails:
+    def _generate(self, client, narrate_video: Path) -> tuple[dict, dict]:
+        project = create_project(client)
+        video = import_video(client, project["id"], narrate_video)
+        run_job(client, video["id"], "extract_audio")
+        run_job(client, video["id"], "transcribe")
+        seed_transcript(client, video["id"], "thumbnail")
+        run_job(client, video["id"], "analyze_events")
+        run_job(client, video["id"], "generate_candidates")
+        candidate = client.get(f"/api/videos/{video['id']}/candidates").json()[0]
+        return project, {**video, "candidate": candidate}
+
+    def test_lists_thumbnail_url(self, client, narrate_video: Path) -> None:
+        _, video = self._generate(client, narrate_video)
+        candidate = video["candidate"]
+
+        assert candidate["thumbnail_url"] == f"/api/candidates/{candidate['id']}/thumbnail"
+
+    def test_serves_jpeg_frame(self, client, narrate_video: Path) -> None:
+        _, video = self._generate(client, narrate_video)
+        candidate_id = video["candidate"]["id"]
+
+        response = client.get(f"/api/candidates/{candidate_id}/thumbnail")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/jpeg"
+        assert response.content[:3] == b"\xff\xd8\xff"
+
+    def test_caches_thumbnail_on_disk(self, client, narrate_video: Path, data_dir: Path) -> None:
+        _, video = self._generate(client, narrate_video)
+        candidate_id = video["candidate"]["id"]
+
+        client.get(f"/api/candidates/{candidate_id}/thumbnail")
+        thumb = data_dir / "projects" / video["project_id"]
+        cached = list((thumb / "media" / "candidate-thumbs").rglob(f"{candidate_id}.jpg"))
+
+        assert cached and cached[0].is_file()
+
+    def test_regeneration_clears_cached_thumbnails(
+        self, client, narrate_video: Path, data_dir: Path
+    ) -> None:
+        _, video = self._generate(client, narrate_video)
+        client.get(f"/api/candidates/{video['candidate']['id']}/thumbnail")
+
+        run_job(client, video["id"], "generate_candidates")
+        fresh = client.get(f"/api/videos/{video['id']}/candidates").json()[0]
+
+        assert client.get(f"/api/candidates/{fresh['id']}/thumbnail").status_code == 200
+
+    def test_unknown_candidate_thumbnail_returns_404(self, client) -> None:
+        assert client.get("/api/candidates/999999/thumbnail").status_code == 404
+
+
+@requires_ffmpeg
 class TestCandidateReview:
     def test_accept_and_reject(self, client, narrate_video: Path) -> None:
         project = create_project(client)

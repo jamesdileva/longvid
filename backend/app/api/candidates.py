@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -82,6 +83,18 @@ def get_candidate(candidate_id: int, db: DbSession) -> CandidateRead:
     if candidate is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Candidate not found")
     return CandidateRead.model_validate(candidate)
+
+
+@router.get("/candidates/{candidate_id}/thumbnail")
+def get_candidate_thumbnail(candidate_id: int, db: DbSession) -> FileResponse:
+    """Serve a frame from the candidate's start time (generated on demand)."""
+    candidate = candidate_service.get_candidate(db, candidate_id)
+    if candidate is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Candidate not found")
+    path = candidate_service.ensure_candidate_thumbnail(db, candidate)
+    if path is None or not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Thumbnail not available")
+    return FileResponse(path, media_type="image/jpeg")
 
 
 @router.patch("/candidates/{candidate_id}", response_model=CandidateRead)

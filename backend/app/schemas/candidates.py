@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from app.models.candidate import CandidateStatus
 
@@ -38,3 +38,9 @@ class CandidateRead(BaseModel):
     event_ids: str | None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def thumbnail_url(self) -> str:
+        """Frame captured at the candidate's start time (generated on demand)."""
+        return f"/api/candidates/{self.id}/thumbnail"

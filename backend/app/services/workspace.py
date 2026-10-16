@@ -31,6 +31,7 @@ WORKSPACE_SUBDIRS: tuple[str, ...] = (
     "media/thumbnails",
     "media/previews",
     "media/audio",
+    "media/candidate-thumbs",
     "analysis",
     "clips/generated",
     "clips/previews",

@@ -5,8 +5,8 @@ import * as candidatesService from '../services/candidates';
 import type { Candidate, CandidateStatus } from '../types/candidate';
 
 const VIDEOS = [
-  { id: 7, filename: 'stream_recording.mp4' },
-  { id: 9, filename: 'podcast.mp4' },
+  { id: 7, filename: 'stream_recording.mp4', preview_url: '/api/videos/7/preview' },
+  { id: 9, filename: 'podcast.mp4', preview_url: '/api/videos/9/preview' },
 ];
 
 function candidate(overrides: Partial<Candidate> = {}): Candidate {
@@ -27,6 +27,7 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
     reason: 'High-energy reaction followed by a win',
     source: 'fake',
     event_ids: '3,7',
+    thumbnail_url: '/api/candidates/1/thumbnail',
     created_at: '2026-10-14T10:00:00',
     updated_at: '2026-10-14T10:00:00',
     ...overrides,
@@ -125,5 +126,95 @@ describe('CandidatesPanel', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('backend down');
     });
+  });
+
+  it('renders a thumbnail per candidate', async () => {
+    vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue([candidate()]);
+
+    render(<CandidatesPanel projectId="p" videos={VIDEOS} onSeekVideo={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('candidate-thumb')).toBeInTheDocument());
+
+    expect(screen.getByTestId('candidate-thumb')).toHaveAttribute(
+      'src',
+      expect.stringContaining('/api/candidates/1/thumbnail'),
+    );
+  });
+
+  it('filters candidates by category', async () => {
+    vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue([
+      candidate({ id: 1, category: 'funny', reason: 'a joke lands' }),
+      candidate({ id: 2, category: 'reaction', reason: 'huge reaction' }),
+    ]);
+
+    render(<CandidatesPanel projectId="p" videos={VIDEOS} onSeekVideo={vi.fn()} />);
+    await waitFor(() => expect(screen.getAllByTestId('candidate-card')).toHaveLength(2));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Funny' }));
+
+    const cards = screen.getAllByTestId('candidate-card');
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toHaveTextContent('a joke lands');
+  });
+
+  it('keeps only the top five with the Best filter', async () => {
+    const scores = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4];
+    vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue(
+      scores.map((overall_score, index) =>
+        candidate({ id: index + 1, overall_score, reason: `score ${overall_score}` }),
+      ),
+    );
+
+    render(<CandidatesPanel projectId="p" videos={VIDEOS} onSeekVideo={vi.fn()} />);
+    await waitFor(() => expect(screen.getAllByTestId('candidate-card')).toHaveLength(6));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Best' }));
+
+    expect(screen.getAllByTestId('candidate-card')).toHaveLength(5);
+    expect(screen.queryByText('score 0.4')).not.toBeInTheDocument();
+  });
+
+  it('sorts candidates by duration', async () => {
+    vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue([
+      candidate({
+        id: 1,
+        reason: 'short',
+        start_seconds: 0,
+        end_seconds: 10,
+        overall_score: 0.9,
+      }),
+      candidate({
+        id: 2,
+        reason: 'long',
+        start_seconds: 100,
+        end_seconds: 140,
+        overall_score: 0.5,
+      }),
+    ]);
+
+    render(<CandidatesPanel projectId="p" videos={VIDEOS} onSeekVideo={vi.fn()} />);
+    await waitFor(() => expect(screen.getAllByTestId('candidate-card')).toHaveLength(2));
+
+    fireEvent.change(screen.getByLabelText('Sort candidates'), { target: { value: 'duration' } });
+
+    const cards = screen.getAllByTestId('candidate-card');
+    expect(cards[0]).toHaveTextContent('long');
+  });
+
+  it('opens an in-range preview player', async () => {
+    vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue([candidate()]);
+
+    const { container } = render(
+      <CandidatesPanel projectId="p" videos={VIDEOS} onSeekVideo={vi.fn()} />,
+    );
+    await waitFor(() => expect(screen.getByTestId('candidate-card')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+
+    expect(screen.getByTestId('candidate-preview')).toBeInTheDocument();
+    expect(screen.getByTestId('preview-seek')).toHaveAttribute('min', '812.2');
+    expect(container.querySelector('video')).toHaveAttribute(
+      'src',
+      expect.stringContaining('/api/videos/7/preview'),
+    );
   });
 });
