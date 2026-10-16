@@ -7,6 +7,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.editing import DEFAULT_PROFILE_KEY, EditingProfile, build_editing_plan, get_profile
 from app.models.clip import Clip, ClipStatus
 from app.models.video import Video
 from app.services.workspace import WorkspaceError, asset_path, ensure_subdir
@@ -22,17 +23,30 @@ def create_clip(
     end_seconds: float,
     title: str | None,
     candidate_id: int | None = None,
-    editing_profile: str = "clean",
+    profile: EditingProfile | None = None,
 ) -> Clip:
-    """Snapshot a timeline definition as a pending clip."""
+    """Snapshot a timeline definition as a pending clip.
+
+    The range is clamped to the profile's maximum duration and recorded together
+    with the resolved editing plan so the render is reproducible (guide §21/§24).
+    """
+    profile = profile or get_profile(DEFAULT_PROFILE_KEY)
+    video = db.get(Video, video_id)
+    source = f"source/{video.relative_path}" if video is not None else ""
+    plan = build_editing_plan(
+        profile, source=source, start_seconds=start_seconds, end_seconds=end_seconds
+    )
+    start = plan["start"]
+    end = plan["end"]
     clip = Clip(
         video_id=video_id,
         candidate_id=candidate_id,
         title=title,
-        start_seconds=start_seconds,
-        end_seconds=end_seconds,
-        duration_seconds=max(end_seconds - start_seconds, 0.0),
-        editing_profile=editing_profile,
+        start_seconds=start,
+        end_seconds=end,
+        duration_seconds=max(end - start, 0.0),
+        editing_profile=profile.key,
+        editing_plan=plan,
         status=ClipStatus.PENDING,
     )
     db.add(clip)

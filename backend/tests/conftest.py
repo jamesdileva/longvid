@@ -66,6 +66,53 @@ def synthetic_video(tmp_path_factory) -> Path:
     return path
 
 
+@pytest.fixture(scope="session")
+def narrate_video(tmp_path_factory) -> Path:
+    """A deterministic 12s 320x240 video: 6s of tone then 6s of silence.
+
+    The silence gives the candidate pipeline a second window to detect, so
+    tests can exercise multi-candidate selection and clipping.
+    """
+    if FFMPEG_MISSING:
+        pytest.skip("ffmpeg/ffprobe not available")
+    path = tmp_path_factory.mktemp("narrate") / "narrate.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=12:size=320x240:rate=10",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440:duration=6",
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=44100:d=6",
+            "-filter_complex",
+            "[1:a][2:a]concat=n=2:v=0:a=1[outa]",
+            "-map",
+            "0:v",
+            "-map",
+            "[outa]",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return path
+
+
 @pytest.fixture(autouse=True)
 def isolated_env(tmp_path, monkeypatch) -> Iterator[None]:
     """Point the app at a throwaway data dir and clear cached settings/engine."""

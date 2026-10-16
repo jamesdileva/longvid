@@ -7,6 +7,7 @@ import * as videosService from '../services/videos';
 import * as jobsService from '../services/jobs';
 import * as candidatesService from '../services/candidates';
 import * as clipsService from '../services/clips';
+import * as editingProfilesService from '../services/editingProfiles';
 import type { Project } from '../types/project';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
@@ -77,6 +78,17 @@ const CLIP: Clip = {
   end_seconds: 851.8,
   duration_seconds: 39.6,
   editing_profile: 'clean',
+  editing_plan: {
+    plan_version: 1,
+    profile: 'clean',
+    source: 'source/stream_recording.mp4',
+    start: 812.2,
+    end: 851.8,
+    aspect_ratio: '16:9',
+    captions: false,
+    zoom: false,
+    audio_normalization: false,
+  },
   status: 'ready',
   file_size_bytes: 5_242_880,
   error: null,
@@ -118,6 +130,7 @@ function mockBase() {
 
 beforeEach(() => {
   vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([]);
+  vi.spyOn(editingProfilesService, 'listEditingProfiles').mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -322,7 +335,10 @@ describe('ProjectDetail videos section', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate Top 5' }));
 
     await waitFor(() => {
-      expect(generateSpy).toHaveBeenCalledWith(VIDEO.id, { selection: 'top5' });
+      expect(generateSpy).toHaveBeenCalledWith(VIDEO.id, {
+        selection: 'top5',
+        editingProfile: 'clean',
+      });
     });
   });
 

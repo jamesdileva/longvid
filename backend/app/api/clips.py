@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.editing import UnknownProfileError, get_profile
 from app.models.candidate import CandidateStatus, ClipCandidate
 from app.models.processing import JobType
 from app.schemas import ClipGenerateRequest, ClipRead, ClipUpdate
@@ -43,6 +44,11 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
     if not candidates:
         raise HTTPException(status.HTTP_409_CONFLICT, "No candidates; detect highlights first")
 
+    try:
+        profile = get_profile(payload.editing_profile)
+    except UnknownProfileError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+
     existing = clip_service.existing_candidate_ids(db, video_id)
     selected = _select_candidates(candidates, payload, existing)
     if not selected:
@@ -56,7 +62,7 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
             end_seconds=candidate.end_seconds,
             title=_title_for(candidate),
             candidate_id=candidate.id,
-            editing_profile=payload.editing_profile,
+            profile=profile,
         )
     db.commit()
 

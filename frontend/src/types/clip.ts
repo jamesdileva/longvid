@@ -4,6 +4,19 @@ export type ClipStatus = 'pending' | 'generating' | 'ready' | 'failed';
 
 export type ClipSelection = 'top5' | 'top10' | 'all' | 'accepted';
 
+/** Deterministic editing plan recorded on a clip (guide §21). */
+export interface EditingPlan {
+  plan_version: number;
+  profile: string;
+  source: string;
+  start: number;
+  end: number;
+  aspect_ratio: string;
+  captions: boolean;
+  zoom: boolean;
+  audio_normalization: boolean;
+}
+
 export interface Clip {
   id: number;
   video_id: number;
@@ -13,6 +26,7 @@ export interface Clip {
   end_seconds: number;
   duration_seconds: number;
   editing_profile: string;
+  editing_plan: EditingPlan | null;
   status: ClipStatus;
   file_size_bytes: number | null;
   error: string | null;

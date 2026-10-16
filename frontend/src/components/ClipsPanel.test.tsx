@@ -1,12 +1,37 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ClipsPanel from './ClipsPanel';
 import * as clipsService from '../services/clips';
+import * as editingProfilesService from '../services/editingProfiles';
 import type { Clip } from '../types/clip';
+import type { EditingProfile } from '../types/editingProfile';
 
 const VIDEOS = [
   { id: 7, filename: 'stream_recording.mp4' },
   { id: 9, filename: 'podcast.mp4' },
+];
+
+const PROFILES: EditingProfile[] = [
+  {
+    key: 'clean',
+    label: 'Clean',
+    description: 'Raw cut',
+    aspect_ratio: '16:9',
+    captions: false,
+    zoom: false,
+    audio_normalization: false,
+    max_duration_seconds: null,
+  },
+  {
+    key: 'shorts',
+    label: 'Shorts',
+    description: 'Vertical captioned',
+    aspect_ratio: '9:16',
+    captions: true,
+    zoom: true,
+    audio_normalization: true,
+    max_duration_seconds: 60,
+  },
 ];
 
 function clip(overrides: Partial<Clip> = {}): Clip {
@@ -19,6 +44,17 @@ function clip(overrides: Partial<Clip> = {}): Clip {
     end_seconds: 851.8,
     duration_seconds: 39.6,
     editing_profile: 'clean',
+    editing_plan: {
+      plan_version: 1,
+      profile: 'clean',
+      source: 'source/stream_recording.mp4',
+      start: 812.2,
+      end: 851.8,
+      aspect_ratio: '16:9',
+      captions: false,
+      zoom: false,
+      audio_normalization: false,
+    },
     status: 'ready',
     file_size_bytes: 5_242_880,
     error: null,
@@ -28,6 +64,10 @@ function clip(overrides: Partial<Clip> = {}): Clip {
     ...overrides,
   };
 }
+
+beforeEach(() => {
+  vi.spyOn(editingProfilesService, 'listEditingProfiles').mockResolvedValue(PROFILES);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -73,7 +113,7 @@ describe('ClipsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate Top 5' }));
 
     await waitFor(() => {
-      expect(generateSpy).toHaveBeenCalledWith(7, { selection: 'top5' });
+      expect(generateSpy).toHaveBeenCalledWith(7, { selection: 'top5', editingProfile: 'clean' });
     });
     expect(onJobsChanged).toHaveBeenCalledWith(7);
     expect(listSpy).toHaveBeenCalledTimes(2);
@@ -92,8 +132,56 @@ describe('ClipsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate All' }));
 
     await waitFor(() => {
-      expect(generateSpy).toHaveBeenCalledWith(9, { selection: 'all' });
+      expect(generateSpy).toHaveBeenCalledWith(9, { selection: 'all', editingProfile: 'clean' });
     });
+  });
+
+  it('generates with the selected editing profile', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([]);
+    const generateSpy = vi
+      .spyOn(clipsService, 'generateClips')
+      .mockResolvedValue({ job_id: 22, status: 'queued', clip_count: 1 });
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+    await waitFor(() => expect(screen.getByTestId('clips-empty')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Editing profile'), { target: { value: 'shorts' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Top 5' }));
+
+    await waitFor(() => {
+      expect(generateSpy).toHaveBeenCalledWith(7, {
+        selection: 'top5',
+        editingProfile: 'shorts',
+      });
+    });
+  });
+
+  it('shows the editing profile and plan on a clip', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_profile: 'shorts',
+        editing_plan: {
+          plan_version: 1,
+          profile: 'shorts',
+          source: 'source/stream_recording.mp4',
+          start: 0,
+          end: 30,
+          aspect_ratio: '9:16',
+          captions: true,
+          zoom: true,
+          audio_normalization: true,
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-card')).toBeInTheDocument());
+    expect(screen.getByTestId('clip-profile')).toHaveTextContent('Shorts');
+    const plan = screen.getByTestId('clip-plan');
+    expect(plan).toHaveTextContent('9:16');
+    expect(plan).toHaveTextContent('captions');
+    expect(plan).toHaveTextContent('zoom');
   });
 
   it('surfaces generation errors', async () => {

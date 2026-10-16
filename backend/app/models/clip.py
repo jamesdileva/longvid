@@ -10,7 +10,7 @@ from __future__ import annotations
 import enum
 from datetime import datetime
 
-from sqlalchemy import Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -45,6 +45,9 @@ class Clip(Base):
     end_seconds: Mapped[float] = mapped_column(Float, nullable=False)
     duration_seconds: Mapped[float] = mapped_column(Float, nullable=False)
     editing_profile: Mapped[str] = mapped_column(String(32), default="clean", nullable=False)
+    # Deterministic plan snapshot (as_dict) so an export can be reproduced
+    # even if the editing profile catalog changes later (§21, §24).
+    editing_plan: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     status: Mapped[ClipStatus] = mapped_column(
         Enum(ClipStatus, values_callable=enum_values),
         default=ClipStatus.PENDING,

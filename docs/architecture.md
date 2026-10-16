@@ -587,6 +587,19 @@ no effects
 minimal processing
 ```
 
+Implementations (Phase 10.1) live in `backend/app/editing/`. The catalog is
+`clean`, `youtube`, `shorts`, `tiktok`; each profile carries an aspect ratio,
+`captions`/`zoom`/`audio_normalization` flags and an optional maximum duration
+(60s for the vertical profiles). A profile plus a clip range resolves to a
+deterministic editing plan (`plan_version`, `profile`, `source`, `start`, `end`,
+`aspect_ratio`, `captions`, `zoom`, `audio_normalization`) that is snapshotted
+on the clip for reproducible exports. Applying the plan to pixels (reframing,
+captions, audio) lands in later phases.
+
+```http
+GET /editing-profiles
+```
+
 ---
 
 # 17. Project Structure

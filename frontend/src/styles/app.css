@@ -564,12 +564,25 @@ a {
   margin-bottom: 12px;
 }
 
-.clip-video-select {
+.clip-video-select,
+.clip-profile-select {
   align-items: center;
   color: var(--muted);
   display: flex;
   font-size: 13px;
   gap: 6px;
+}
+
+.clip-plan {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.clip-plan span {
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 999px;
+  font-size: 11px;
+  padding: 1px 8px;
 }
 
 .clip-actions {

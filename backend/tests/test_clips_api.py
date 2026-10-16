@@ -20,49 +20,6 @@ from tests.conftest import requires_ffmpeg
 TERMINAL = {"completed", "failed", "cancelled"}
 
 
-@pytest.fixture(scope="session")
-def narrate_video(tmp_path_factory) -> Path:
-    """12s video: 6s of tone then 6s of silence."""
-    import subprocess
-
-    path = tmp_path_factory.mktemp("clipclip") / "narrate.mp4"
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc=duration=12:size=320x240:rate=10",
-            "-f",
-            "lavfi",
-            "-i",
-            "sine=frequency=440:duration=6",
-            "-f",
-            "lavfi",
-            "-i",
-            "anullsrc=r=44100:d=6",
-            "-filter_complex",
-            "[1:a][2:a]concat=n=2:v=0:a=1[outa]",
-            "-map",
-            "0:v",
-            "-map",
-            "[outa]",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            "-shortest",
-            str(path),
-        ],
-        check=True,
-        capture_output=True,
-    )
-    return path
-
-
 @pytest.fixture()
 def db_session() -> Iterator:
     session = get_sessionmaker()()

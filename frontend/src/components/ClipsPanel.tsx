@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { deleteClip, generateClips, listProjectClips } from '../services/clips';
+import { listEditingProfiles } from '../services/editingProfiles';
 import { assetUrl } from '../services/videos';
 import type { Clip, ClipSelection } from '../types/clip';
+import type { EditingProfile } from '../types/editingProfile';
 import { formatDuration, formatFileSize } from '../utils/format';
 
 interface ClipVideo {
@@ -29,12 +31,32 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
+  const [profiles, setProfiles] = useState<EditingProfile[]>([]);
+  const [profileKey, setProfileKey] = useState('clean');
   const [generating, setGenerating] = useState(false);
 
   const filenameById = useMemo(
     () => new Map(videos.map((video) => [video.id, video.filename])),
     [videos],
   );
+  const labelByKey = useMemo(
+    () => new Map(profiles.map((profile) => [profile.key, profile.label])),
+    [profiles],
+  );
+
+  useEffect(() => {
+    let active = true;
+    listEditingProfiles()
+      .then((loaded) => {
+        if (active) setProfiles(loaded);
+      })
+      .catch(() => {
+        if (active) setProfiles([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedVideoId === null && videos.length > 0) {
@@ -75,7 +97,7 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
     setGenerating(true);
     setError(null);
     try {
-      await generateClips(selectedVideoId, { selection });
+      await generateClips(selectedVideoId, { selection, editingProfile: profileKey });
       onJobsChanged?.(selectedVideoId);
       await load();
     } catch (err) {
@@ -121,6 +143,22 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
               ))}
             </select>
           </label>
+          {profiles.length > 0 && (
+            <label className="clip-profile-select">
+              Profile
+              <select
+                value={profileKey}
+                aria-label="Editing profile"
+                onChange={(event) => setProfileKey(event.target.value)}
+              >
+                {profiles.map((profile) => (
+                  <option key={profile.key} value={profile.key}>
+                    {profile.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="clip-actions">
             {BATCH_ACTIONS.map((action) => (
               <button
@@ -152,7 +190,16 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
               </div>
               <p className="clip-meta">
                 <span>{formatDuration(clip.duration_seconds)}</span>
-                <span>{clip.editing_profile}</span>
+                <span data-testid="clip-profile">
+                  {labelByKey.get(clip.editing_profile) ?? clip.editing_profile}
+                </span>
+                {clip.editing_plan && (
+                  <span className="clip-plan" data-testid="clip-plan">
+                    <span>{clip.editing_plan.aspect_ratio}</span>
+                    {clip.editing_plan.captions && <span>captions</span>}
+                    {clip.editing_plan.zoom && <span>zoom</span>}
+                  </span>
+                )}
                 {clip.file_size_bytes !== null && <span>{formatFileSize(clip.file_size_bytes)}</span>}
                 <span className="clip-video">
                   {filenameById.get(clip.video_id) ?? `video #${clip.video_id}`}

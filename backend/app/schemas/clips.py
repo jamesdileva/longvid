@@ -43,6 +43,7 @@ class ClipRead(BaseModel):
     end_seconds: float
     duration_seconds: float
     editing_profile: str
+    editing_plan: dict | None
     status: ClipStatus
     file_size_bytes: int | None
     error: str | None
