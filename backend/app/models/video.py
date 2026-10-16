@@ -13,6 +13,7 @@ from app.models.project import Project
 from app.utils.time import utcnow
 
 if TYPE_CHECKING:
+    from app.models.clip import Clip
     from app.models.processing import ProcessingJob
 
 
@@ -61,6 +62,10 @@ class Video(Base):
 
     project: Mapped[Project] = relationship(back_populates="videos")
     jobs: Mapped[list["ProcessingJob"]] = relationship(
+        back_populates="video",
+        cascade="all, delete-orphan",
+    )
+    clips: Mapped[list["Clip"]] = relationship(
         back_populates="video",
         cascade="all, delete-orphan",
     )

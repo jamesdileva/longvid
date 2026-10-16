@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import CandidatesPanel from '../components/CandidatesPanel';
+import ClipsPanel from '../components/ClipsPanel';
 import VideoCard from '../components/VideoCard';
 import VideoImportForm from '../components/VideoImportForm';
 import { getProject, updateProject } from '../services/projects';
@@ -163,6 +164,15 @@ export default function ProjectDetail() {
     }
   }
 
+  async function handleRefreshJobs(videoId: number) {
+    try {
+      const jobs = await listVideoJobs(videoId);
+      setJobsByVideo((current) => ({ ...current, [videoId]: jobs }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh jobs');
+    }
+  }
+
   async function handleDeleteVideo(videoId: number) {
     setError(null);
     try {
@@ -258,7 +268,7 @@ export default function ProjectDetail() {
       </div>
 
       <div className="panel">
-        <h2>Clips</h2>
+        <h2>Highlights</h2>
         <CandidatesPanel
           projectId={id}
           videos={videos.map((video) => ({
@@ -267,6 +277,15 @@ export default function ProjectDetail() {
             preview_url: video.preview_url,
           }))}
           onSeekVideo={seekVideo}
+        />
+      </div>
+
+      <div className="panel">
+        <h2>Clips</h2>
+        <ClipsPanel
+          projectId={id}
+          videos={videos.map((video) => ({ id: video.id, filename: video.filename }))}
+          onJobsChanged={(videoId) => void handleRefreshJobs(videoId)}
         />
       </div>
     </section>

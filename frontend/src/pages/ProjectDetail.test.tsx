@@ -1,15 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectDetail from './ProjectDetail';
 import * as projectsService from '../services/projects';
 import * as videosService from '../services/videos';
 import * as jobsService from '../services/jobs';
 import * as candidatesService from '../services/candidates';
+import * as clipsService from '../services/clips';
 import type { Project } from '../types/project';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
 import type { Candidate } from '../types/candidate';
+import type { Clip } from '../types/clip';
 
 const PROJECT: Project = {
   id: 'a'.repeat(32),
@@ -66,6 +68,23 @@ const CANDIDATE: Candidate = {
   updated_at: '2026-10-14T10:00:00',
 };
 
+const CLIP: Clip = {
+  id: 21,
+  video_id: VIDEO.id,
+  candidate_id: 3,
+  title: 'High-energy reaction followed by a win',
+  start_seconds: 812.2,
+  end_seconds: 851.8,
+  duration_seconds: 39.6,
+  editing_profile: 'clean',
+  status: 'ready',
+  file_size_bytes: 5_242_880,
+  error: null,
+  file_url: '/api/clips/21/file',
+  created_at: '2026-10-14T10:05:00',
+  updated_at: '2026-10-14T10:05:00',
+};
+
 const COMPLETED_JOB: Job = {
   id: 3,
   video_id: VIDEO.id,
@@ -97,6 +116,10 @@ function mockBase() {
   vi.spyOn(candidatesService, 'listProjectCandidates').mockResolvedValue([]);
 }
 
+beforeEach(() => {
+  vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([]);
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
@@ -111,7 +134,9 @@ describe('ProjectDetail videos section', () => {
     await waitFor(() => {
       expect(screen.getByTestId('video-list')).toBeInTheDocument();
     });
-    expect(screen.getByText('stream_recording.mp4')).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('video-list')).getByText('stream_recording.mp4'),
+    ).toBeInTheDocument();
     expect(screen.getAllByTestId('video-duration')[0]).toHaveTextContent('1:00:00');
     expect(screen.queryByTestId('videos-empty')).not.toBeInTheDocument();
   });
@@ -134,7 +159,9 @@ describe('ProjectDetail videos section', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import video' }));
 
     await waitFor(() => {
-      expect(screen.getByText('stream_recording.mp4')).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('video-list')).getByText('stream_recording.mp4'),
+      ).toBeInTheDocument();
     });
     expect(importSpy).toHaveBeenCalledWith(PROJECT.id, 'D:/clips/stream.mp4');
     expect(listSpy).toHaveBeenCalledTimes(2);
@@ -271,13 +298,31 @@ describe('ProjectDetail videos section', () => {
 
     renderDetail();
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Generate clips' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Detect highlights' })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Generate clips' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Detect highlights' }));
 
     await waitFor(() => {
       expect(generateSpy).toHaveBeenCalledWith(VIDEO.id);
+    });
+  });
+
+  it('renders clips and generates top clips for the selected video', async () => {
+    mockBase();
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([CLIP]);
+    const generateSpy = vi
+      .spyOn(clipsService, 'generateClips')
+      .mockResolvedValue({ job_id: 20, status: 'queued', clip_count: 1 });
+
+    renderDetail();
+    await waitFor(() => expect(screen.getByTestId('clip-card')).toBeInTheDocument());
+    expect(screen.getByText('High-energy reaction followed by a win')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Top 5' }));
+
+    await waitFor(() => {
+      expect(generateSpy).toHaveBeenCalledWith(VIDEO.id, { selection: 'top5' });
     });
   });
 

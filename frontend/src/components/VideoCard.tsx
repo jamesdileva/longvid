@@ -23,8 +23,9 @@ const JOB_LABELS: Record<string, string> = {
   extract_audio: 'Extract audio',
   transcribe: 'Transcribe',
   analyze_events: 'Analyze',
-  generate_candidates: 'Generate clips',
-  score_candidates: 'Re-score clips',
+  generate_candidates: 'Detect highlights',
+  score_candidates: 'Re-score highlights',
+  generate_clip: 'Generate clips',
 };
 
 export default function VideoCard({

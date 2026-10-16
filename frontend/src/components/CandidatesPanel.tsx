@@ -91,7 +91,7 @@ export default function CandidatesPanel({ projectId, videos, onSeekVideo }: Cand
     return (
       <div className="candidates-panel" data-testid="candidates-panel">
         <p className="empty-note" data-testid="candidates-empty">
-          No candidates yet. Use “Generate clips” on a video to detect highlights.
+          No candidates yet. Use “Detect highlights” on a video to find clip-worthy moments.
         </p>
       </div>
     );

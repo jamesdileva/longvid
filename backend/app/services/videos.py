@@ -106,10 +106,18 @@ def delete_video(db: Session, video_id: int) -> bool:
 
     project = video.project
     _remove_assets(video)
+    _remove_clip_files(db, video_id)
     db.delete(video)
     db.commit()
     _touch_project(db, project)
     return True
+
+
+def _remove_clip_files(db: Session, video_id: int) -> None:
+    """Unlink rendered clip MP4s before their rows cascade away."""
+    from app.services import clips as clip_service
+
+    clip_service.delete_files_for_video(db, video_id)
 
 
 def _remove_assets(video: Video) -> None:

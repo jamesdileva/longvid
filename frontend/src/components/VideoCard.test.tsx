@@ -218,23 +218,31 @@ describe('VideoCard', () => {
     expect(handlers.onAnalyze).toHaveBeenCalledWith({ ...VIDEO, audio_path: 'media/audio/7.wav' });
   });
 
-  it('starts candidate generation when audio is ready', () => {
+  it('starts candidate detection when audio is ready', () => {
     const handlers = renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Generate clips' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Detect highlights' }));
 
     expect(handlers.onGenerateCandidates).toHaveBeenCalled();
   });
 
-  it('disables generation until audio is extracted', () => {
+  it('disables detection until audio is extracted', () => {
     renderCard();
 
-    expect(screen.getByRole('button', { name: 'Generate clips' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Detect highlights' })).toBeDisabled();
   });
 
-  it('labels a running candidate generation job', () => {
+  it('labels a running candidate detection job', () => {
     renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' }, [
       makeJob({ type: 'generate_candidates', status: 'running', progress: 0.8 }),
+    ]);
+
+    expect(screen.getByText('Processing: Detect highlights')).toBeInTheDocument();
+  });
+
+  it('labels a running clip generation job', () => {
+    renderCard({ ...VIDEO, audio_path: 'media/audio/7.wav' }, [
+      makeJob({ type: 'generate_clip', status: 'running', progress: 0.4 }),
     ]);
 
     expect(screen.getByText('Processing: Generate clips')).toBeInTheDocument();

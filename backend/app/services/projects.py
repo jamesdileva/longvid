@@ -7,6 +7,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.clip import Clip
 from app.models.project import Project
 from app.models.video import Video
 from app.schemas.projects import ProjectCreate, ProjectRead, ProjectUpdate
@@ -88,6 +89,12 @@ def to_read_model(db: Session, project: Project) -> ProjectRead:
     video_count = db.execute(
         select(func.count()).select_from(Video).where(Video.project_id == project.id)
     ).scalar_one()
+    clip_count = db.execute(
+        select(func.count())
+        .select_from(Clip)
+        .join(Video, Video.id == Clip.video_id)
+        .where(Video.project_id == project.id)
+    ).scalar_one()
     return ProjectRead(
         id=project.id,
         name=project.name,
@@ -95,8 +102,7 @@ def to_read_model(db: Session, project: Project) -> ProjectRead:
         status=project.status,
         workspace_path=project.workspace_path,
         video_count=video_count,
-        # Clips arrive in Phase 9; the data model leaves room from day one.
-        clip_count=0,
+        clip_count=clip_count,
         created_at=project.created_at,
         updated_at=project.updated_at,
     )

@@ -738,12 +738,17 @@ POST /videos/{id}/analyze
 
 ```http
 GET    /projects/{id}/clips
+GET    /videos/{id}/clips
 GET    /clips/{id}
-POST   /clips
+GET    /clips/{id}/file
 PATCH  /clips/{id}
 DELETE /clips/{id}
-POST   /clips/{id}/generate
+POST   /videos/{id}/generate-clips
 ```
+
+`POST /videos/{id}/generate-clips` creates clip definitions for a candidate
+selection (`top5` | `top10` | `all` | `accepted`, or explicit `candidate_ids`)
+and queues a `generate_clip` job that renders each to MP4 with FFmpeg.
 
 ## Exports
 

@@ -550,3 +550,80 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.clips-panel {
+  margin-top: 4px;
+}
+
+.clip-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.clip-video-select {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 13px;
+  gap: 6px;
+}
+
+.clip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.clip-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.clip-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.clip-title {
+  font-weight: 600;
+}
+
+.clip-meta {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.clip-player {
+  border-radius: 8px;
+  display: block;
+  max-width: 480px;
+  width: 100%;
+}
+
+.status-pill.pending {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--muted);
+}
+
+.status-pill.generating {
+  background: rgba(91, 140, 255, 0.15);
+  color: var(--accent);
+}
+
+.status-pill.failed {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
