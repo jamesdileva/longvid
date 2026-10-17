@@ -24,11 +24,13 @@ def create_clip(
     title: str | None,
     candidate_id: int | None = None,
     profile: EditingProfile | None = None,
+    trim: dict | None = None,
 ) -> Clip:
     """Snapshot a timeline definition as a pending clip.
 
-    The range is clamped to the profile's maximum duration and recorded together
-    with the resolved editing plan so the render is reproducible (guide §21/§24).
+    The range is trimmed to natural boundaries by the caller, clamped to the
+    profile's maximum duration here, and recorded with the resolved editing
+    plan so the render is reproducible (guide §21/§24).
     """
     profile = profile or get_profile(DEFAULT_PROFILE_KEY)
     video = db.get(Video, video_id)
@@ -36,6 +38,8 @@ def create_clip(
     plan = build_editing_plan(
         profile, source=source, start_seconds=start_seconds, end_seconds=end_seconds
     )
+    if trim is not None:
+        plan["trim"] = trim
     start = plan["start"]
     end = plan["end"]
     clip = Clip(

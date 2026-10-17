@@ -182,6 +182,38 @@ describe('ClipsPanel', () => {
     expect(plan).toHaveTextContent('9:16');
     expect(plan).toHaveTextContent('captions');
     expect(plan).toHaveTextContent('zoom');
+    expect(screen.queryByTestId('clip-trim')).not.toBeInTheDocument();
+  });
+
+  it('flags clips whose dead air was trimmed', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_plan: {
+          plan_version: 1,
+          profile: 'clean',
+          source: 'source/stream_recording.mp4',
+          start: 812.2,
+          end: 847.3,
+          aspect_ratio: '16:9',
+          captions: false,
+          zoom: false,
+          audio_normalization: false,
+          trim: {
+            applied: true,
+            original_start: 812.2,
+            original_end: 851.8,
+            sentence_start: false,
+            sentence_end: true,
+            silence_removed_seconds: 4.5,
+          },
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-trim')).toBeInTheDocument());
+    expect(screen.getByTestId('clip-trim')).toHaveTextContent('trimmed 5s');
   });
 
   it('surfaces generation errors', async () => {

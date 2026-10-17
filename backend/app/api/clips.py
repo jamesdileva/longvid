@@ -8,15 +8,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.database import get_db
-from app.editing import UnknownProfileError, get_profile
+from app.editing import UnknownProfileError, get_profile, trim_clip_range
 from app.models.candidate import CandidateStatus, ClipCandidate
 from app.models.processing import JobType
 from app.schemas import ClipGenerateRequest, ClipRead, ClipUpdate
+from app.services import analysis as analysis_service
 from app.services import candidates as candidate_service
 from app.services import clips as clip_service
 from app.services import jobs as job_service
 from app.services import projects as project_service
+from app.services import transcripts as transcript_service
 from app.services import videos as video_service
 from app.services.workspace import WorkspaceError, asset_path
 from app.workers.queue import get_queue
@@ -35,7 +38,8 @@ SELECTION_SIZES = {"top5": 5, "top10": 10}
 )
 def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -> dict:
     """Create clip definitions for the chosen candidates and queue rendering."""
-    if video_service.get_video(db, video_id) is None:
+    video = video_service.get_video(db, video_id)
+    if video is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Video not found")
     if job_service.active_job_exists(db, video_id, JobType.GENERATE_CLIP):
         raise HTTPException(status.HTTP_409_CONFLICT, "Clip generation is already active")
@@ -49,26 +53,56 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
     except UnknownProfileError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
+    trim_context = _trim_context(db, video)
     existing = clip_service.existing_candidate_ids(db, video_id)
     selected = _select_candidates(candidates, payload, existing)
     if not selected:
         raise HTTPException(status.HTTP_409_CONFLICT, "No new candidates to clip")
 
     for candidate in selected:
+        trimmed = trim_clip_range(
+            candidate.start_seconds,
+            candidate.end_seconds,
+            **trim_context,
+        )
         clip_service.create_clip(
             db,
             video_id,
-            start_seconds=candidate.start_seconds,
-            end_seconds=candidate.end_seconds,
+            start_seconds=trimmed.start_seconds,
+            end_seconds=trimmed.end_seconds,
             title=_title_for(candidate),
             candidate_id=candidate.id,
             profile=profile,
+            trim=trimmed.trim,
         )
     db.commit()
 
     job = job_service.create_job(db, video_id, JobType.GENERATE_CLIP)
     get_queue().submit(job.id)
     return {"job_id": job.id, "status": job.status.value, "clip_count": len(selected)}
+
+
+def _trim_context(db: DbSession, video) -> dict:
+    """Reusable keyword arguments for trim_clip_range, per video."""
+    settings = get_settings()
+    segments = transcript_service.get_transcript_for_video(db, video.id)
+    transcript_segments = [
+        (segment.start_seconds, segment.end_seconds, segment.text)
+        for segment in (segments.segments if segments else [])
+    ]
+    silences = [
+        (event.start_seconds, event.end_seconds)
+        for event in analysis_service.list_events(db, video.id)
+        if event.type == "silence"
+    ]
+    return {
+        "segments": transcript_segments,
+        "silences": silences,
+        "duration": video.duration_seconds or 0.0,
+        "sentence_tolerance": settings.trim_sentence_tolerance_seconds,
+        "pre_roll": settings.trim_pre_roll_seconds,
+        "post_roll": settings.trim_post_roll_seconds,
+    }
 
 
 @router.get("/videos/{video_id}/clips", response_model=list[ClipRead])

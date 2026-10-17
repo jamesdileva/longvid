@@ -600,6 +600,16 @@ captions, audio) lands in later phases.
 GET /editing-profiles
 ```
 
+Phase 10.2 adds automatic trimming (`backend/app/editing/trimming.py`): at clip
+creation the padded candidate range is refined against the transcript and the
+detected silence runs. A boundary that cuts a sentence is snapped to the
+sentence's start/end when within `trim_sentence_tolerance_seconds`; a boundary
+sitting in dead air is pulled to the speech edge, keeping only
+`trim_pre_roll_seconds` / `trim_post_roll_seconds` of breathing room. The
+decision is recorded in the plan's `trim` snapshot (`original_start`,
+`original_end`, `sentence_start`, `sentence_end`, `silence_removed_seconds`) so
+it stays reproducible.
+
 ---
 
 # 17. Project Structure

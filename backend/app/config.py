@@ -74,6 +74,12 @@ class Settings(BaseSettings):
     candidate_min_seconds: float = 15.0
     candidate_max_seconds: float = 90.0
 
+    # Automatic trimming at clip creation (roadmap 10.2): snap clip boundaries
+    # to natural sentence edges and remove dead air around the speech.
+    trim_sentence_tolerance_seconds: float = 3.0
+    trim_pre_roll_seconds: float = 0.5
+    trim_post_roll_seconds: float = 1.0
+
     # Candidate scoring weights (implementation-guide §16).
     scoring_weights: dict[str, float] = {
         "semantic": 0.30,

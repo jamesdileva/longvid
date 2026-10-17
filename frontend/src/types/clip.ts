@@ -4,6 +4,16 @@ export type ClipStatus = 'pending' | 'generating' | 'ready' | 'failed';
 
 export type ClipSelection = 'top5' | 'top10' | 'all' | 'accepted';
 
+/** Automatic trim decisions recorded by the backend (roadmap 10.2). */
+export interface EditingPlanTrim {
+  applied: boolean;
+  original_start: number;
+  original_end: number;
+  sentence_start: boolean;
+  sentence_end: boolean;
+  silence_removed_seconds: number;
+}
+
 /** Deterministic editing plan recorded on a clip (guide §21). */
 export interface EditingPlan {
   plan_version: number;
@@ -15,6 +25,7 @@ export interface EditingPlan {
   captions: boolean;
   zoom: boolean;
   audio_normalization: boolean;
+  trim?: EditingPlanTrim;
 }
 
 export interface Clip {
