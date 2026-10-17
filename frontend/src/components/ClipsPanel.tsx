@@ -225,6 +225,19 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                   {clip.error}
                 </p>
               )}
+              {clip.caption_srt_url && (
+                <p className="clip-captions" data-testid="clip-captions">
+                  Captions:
+                  <a href={assetUrl(clip.caption_srt_url) ?? undefined} download>
+                    SRT
+                  </a>
+                  {clip.caption_ass_url && (
+                    <a href={assetUrl(clip.caption_ass_url) ?? undefined} download>
+                      ASS
+                    </a>
+                  )}
+                </p>
+              )}
               <div className="card-actions">
                 <button type="button" onClick={() => void handleDelete(clip.id)}>
                   Delete

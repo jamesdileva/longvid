@@ -7,12 +7,22 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.editing import DEFAULT_PROFILE_KEY, EditingProfile, build_editing_plan, get_profile
+from app.editing import (
+    DEFAULT_PROFILE_KEY,
+    CaptionCue,
+    EditingProfile,
+    build_ass,
+    build_editing_plan,
+    build_srt,
+    get_profile,
+    style_for_profile,
+)
 from app.models.clip import Clip, ClipStatus
 from app.models.video import Video
 from app.services.workspace import WorkspaceError, asset_path, ensure_subdir
 
 RENDERABLE_STATUSES = (ClipStatus.PENDING, ClipStatus.FAILED)
+CAPTION_FORMATS = ("srt", "ass")
 
 
 def create_clip(
@@ -25,12 +35,14 @@ def create_clip(
     candidate_id: int | None = None,
     profile: EditingProfile | None = None,
     trim: dict | None = None,
+    caption_cues: list[CaptionCue] | None = None,
 ) -> Clip:
     """Snapshot a timeline definition as a pending clip.
 
     The range is trimmed to natural boundaries by the caller, clamped to the
     profile's maximum duration here, and recorded with the resolved editing
-    plan so the render is reproducible (guide §21/§24).
+    plan so the render is reproducible (guide §21/§24). When the profile asks
+    for captions and cues are supplied, SRT/ASS files are written up front.
     """
     profile = profile or get_profile(DEFAULT_PROFILE_KEY)
     video = db.get(Video, video_id)
@@ -42,6 +54,10 @@ def create_clip(
         plan["trim"] = trim
     start = plan["start"]
     end = plan["end"]
+    has_captions = bool(profile.captions and caption_cues)
+    plan["captions"] = has_captions
+    if has_captions:
+        plan["caption_cue_count"] = len(caption_cues or [])
     clip = Clip(
         video_id=video_id,
         candidate_id=candidate_id,
@@ -54,6 +70,14 @@ def create_clip(
         status=ClipStatus.PENDING,
     )
     db.add(clip)
+    if has_captions and video is not None:
+        db.flush()  # assign clip.id for the caption filenames
+        write_caption_files(
+            video.project_id,
+            clip.id,
+            srt=build_srt(caption_cues or []),
+            ass=build_ass(caption_cues or [], style_for_profile(profile)),
+        )
     return clip
 
 
@@ -119,6 +143,7 @@ def delete_clip(db: Session, clip_id: int) -> bool:
     if clip is None:
         return False
     _unlink_file(clip)
+    _unlink_captions(clip)
     db.delete(clip)
     db.commit()
     return True
@@ -129,10 +154,27 @@ def clip_output_path(project_id: str, clip_id: int) -> Path:
     return ensure_subdir(project_id, "clips/generated") / f"{clip_id}.mp4"
 
 
+def caption_path(project_id: str, clip_id: int, fmt: str) -> Path:
+    """Absolute path of a clip's sidecar caption file (``srt`` or ``ass``)."""
+    return ensure_subdir(project_id, "clips/captions") / f"{clip_id}.{fmt}"
+
+
+def relative_caption_path(clip_id: int, fmt: str) -> str:
+    """Workspace-relative caption path stored on the editing plan's convention."""
+    return f"clips/captions/{clip_id}.{fmt}"
+
+
+def write_caption_files(project_id: str, clip_id: int, *, srt: str, ass: str) -> None:
+    """Write a clip's SRT and ASS caption tracks."""
+    caption_path(project_id, clip_id, "srt").write_text(srt, encoding="utf-8")
+    caption_path(project_id, clip_id, "ass").write_text(ass, encoding="utf-8")
+
+
 def delete_files_for_video(db: Session, video_id: int) -> None:
-    """Best-effort removal of a video's rendered clip files (before row deletion)."""
+    """Best-effort removal of a video's rendered clip and caption files."""
     for clip in list_video_clips(db, video_id):
         _unlink_file(clip)
+        _unlink_captions(clip)
 
 
 def relative_clip_path(clip_id: int) -> str:
@@ -149,3 +191,13 @@ def _unlink_file(clip: Clip) -> None:
         return
     if path is not None and path.is_file():
         path.unlink()
+
+
+def _unlink_captions(clip: Clip) -> None:
+    for fmt in CAPTION_FORMATS:
+        try:
+            path = asset_path(clip.video.project_id, relative_caption_path(clip.id, fmt))
+        except WorkspaceError:
+            continue
+        if path is not None and path.is_file():
+            path.unlink()

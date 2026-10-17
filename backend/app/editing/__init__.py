@@ -6,6 +6,14 @@ into a deterministic editing plan (§21) that later render stages execute, and
 trims the range to natural sentence/silence boundaries first (roadmap 10.2).
 """
 
+from app.editing.captions import (
+    CaptionCue,
+    CaptionStyle,
+    build_ass,
+    build_srt,
+    cues_for_range,
+    style_for_profile,
+)
 from app.editing.plan import build_editing_plan, clamp_duration
 from app.editing.profiles import (
     DEFAULT_PROFILE_KEY,
@@ -22,12 +30,18 @@ __all__ = [
     "DEFAULT_PROFILE_KEY",
     "PROFILES",
     "SUPPORTED_ASPECT_RATIOS",
+    "CaptionCue",
+    "CaptionStyle",
     "EditingProfile",
     "TrimResult",
     "UnknownProfileError",
+    "build_ass",
     "build_editing_plan",
+    "build_srt",
     "clamp_duration",
+    "cues_for_range",
     "get_profile",
     "list_profiles",
+    "style_for_profile",
     "trim_clip_range",
 ]

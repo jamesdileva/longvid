@@ -610,6 +610,18 @@ decision is recorded in the plan's `trim` snapshot (`original_start`,
 `original_end`, `sentence_start`, `sentence_end`, `silence_removed_seconds`) so
 it stays reproducible.
 
+Phase 10.3 adds captions (`backend/app/editing/captions.py`): transcript
+segments overlapping a clip are re-based to the clip start and written as an
+SRT sidecar and a styled ASS track (vertical profiles get a larger, higher
+style). Clips whose profile requests captions burn the ASS track during
+rendering via FFmpeg's `libass`, which forces a video re-encode. The plan marks
+`captions` (and `caption_cue_count`); both tracks are downloadable.
+
+```http
+GET /clips/{id}/captions/srt
+GET /clips/{id}/captions/ass
+```
+
 ---
 
 # 17. Project Structure

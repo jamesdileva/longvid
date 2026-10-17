@@ -57,3 +57,19 @@ class ClipRead(BaseModel):
         if self.status != ClipStatus.READY:
             return None
         return f"/api/clips/{self.id}/file"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def caption_srt_url(self) -> str | None:
+        """Download URL for the clip's SRT captions, when it has any."""
+        if not self.editing_plan or not self.editing_plan.get("captions"):
+            return None
+        return f"/api/clips/{self.id}/captions/srt"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def caption_ass_url(self) -> str | None:
+        """Download URL for the clip's styled ASS captions, when it has any."""
+        if not self.editing_plan or not self.editing_plan.get("captions"):
+            return None
+        return f"/api/clips/{self.id}/captions/ass"

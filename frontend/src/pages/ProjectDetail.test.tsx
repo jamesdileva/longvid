@@ -93,6 +93,8 @@ const CLIP: Clip = {
   file_size_bytes: 5_242_880,
   error: null,
   file_url: '/api/clips/21/file',
+  caption_srt_url: null,
+  caption_ass_url: null,
   created_at: '2026-10-14T10:05:00',
   updated_at: '2026-10-14T10:05:00',
 };

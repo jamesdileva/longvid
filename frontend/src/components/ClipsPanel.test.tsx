@@ -59,6 +59,8 @@ function clip(overrides: Partial<Clip> = {}): Clip {
     file_size_bytes: 5_242_880,
     error: null,
     file_url: '/api/clips/1/file',
+    caption_srt_url: null,
+    caption_ass_url: null,
     created_at: '2026-10-14T10:05:00',
     updated_at: '2026-10-14T10:05:00',
     ...overrides,
@@ -183,6 +185,22 @@ describe('ClipsPanel', () => {
     expect(plan).toHaveTextContent('captions');
     expect(plan).toHaveTextContent('zoom');
     expect(screen.queryByTestId('clip-trim')).not.toBeInTheDocument();
+  });
+
+  it('offers SRT and ASS caption downloads when present', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        caption_srt_url: '/api/clips/1/captions/srt',
+        caption_ass_url: '/api/clips/1/captions/ass',
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-captions')).toBeInTheDocument());
+    const links = within(screen.getByTestId('clip-captions')).getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toEqual(['SRT', 'ASS']);
+    expect(links[0]).toHaveAttribute('href', expect.stringContaining('/api/clips/1/captions/srt'));
   });
 
   it('flags clips whose dead air was trimmed', async () => {

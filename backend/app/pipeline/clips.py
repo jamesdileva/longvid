@@ -8,6 +8,7 @@ aborting the rest of the batch.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -47,7 +48,13 @@ def generate_clips(db: Session, job: ProcessingJob) -> None:
 
         output = clip_service.clip_output_path(video.project_id, clip.id)
         try:
-            ffmpeg_service.cut_clip(source, output, clip.start_seconds, clip.end_seconds)
+            ffmpeg_service.cut_clip(
+                source,
+                output,
+                clip.start_seconds,
+                clip.end_seconds,
+                subtitles_path=_subtitle_track(video.project_id, clip),
+            )
             clip.file_path = clip_service.relative_clip_path(clip.id)
             clip.file_size_bytes = output.stat().st_size
             clip.status = ClipStatus.READY
@@ -62,3 +69,15 @@ def generate_clips(db: Session, job: ProcessingJob) -> None:
         job_service.update_progress(db, job, (index + 1) / total)
 
     job_service.complete_job(db, job)
+
+
+def _subtitle_track(project_id: str, clip) -> Path | None:
+    """The ASS track to burn for a clip, if its plan asks for captions."""
+    plan = clip.editing_plan or {}
+    if not plan.get("captions"):
+        return None
+    try:
+        path = asset_path(project_id, clip_service.relative_caption_path(clip.id, "ass"))
+    except WorkspaceError:
+        return None
+    return path if path is not None and path.is_file() else None

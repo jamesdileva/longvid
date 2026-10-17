@@ -42,6 +42,8 @@ export interface Clip {
   file_size_bytes: number | null;
   error: string | null;
   file_url: string | null;
+  caption_srt_url: string | null;
+  caption_ass_url: string | null;
   created_at: string;
   updated_at: string;
 }

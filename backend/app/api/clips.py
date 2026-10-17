@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.editing import UnknownProfileError, get_profile, trim_clip_range
+from app.editing import UnknownProfileError, cues_for_range, get_profile, trim_clip_range
 from app.models.candidate import CandidateStatus, ClipCandidate
 from app.models.processing import JobType
 from app.schemas import ClipGenerateRequest, ClipRead, ClipUpdate
@@ -29,6 +29,8 @@ DbSession = Annotated[Session, Depends(get_db)]
 router = APIRouter(tags=["clips"])
 
 SELECTION_SIZES = {"top5": 5, "top10": 10}
+
+CAPTION_MEDIA_TYPES = {"srt": "application/x-subrip", "ass": "text/x-ssa"}
 
 
 @router.post(
@@ -53,18 +55,26 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
     except UnknownProfileError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
-    trim_context = _trim_context(db, video)
+    trim_kwargs = _trim_context(db, video)
     existing = clip_service.existing_candidate_ids(db, video_id)
     selected = _select_candidates(candidates, payload, existing)
     if not selected:
         raise HTTPException(status.HTTP_409_CONFLICT, "No new candidates to clip")
 
+    caption_cues_enabled = profile.captions and get_settings().captions_enabled
     for candidate in selected:
         trimmed = trim_clip_range(
             candidate.start_seconds,
             candidate.end_seconds,
-            **trim_context,
+            **trim_kwargs,
         )
+        captions = None
+        if caption_cues_enabled:
+            captions = cues_for_range(
+                trim_kwargs["segments"],
+                start=trimmed.start_seconds,
+                end=trimmed.end_seconds,
+            )
         clip_service.create_clip(
             db,
             video_id,
@@ -74,6 +84,7 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
             candidate_id=candidate.id,
             profile=profile,
             trim=trimmed.trim,
+            caption_cues=captions,
         )
     db.commit()
 
@@ -85,24 +96,32 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
 def _trim_context(db: DbSession, video) -> dict:
     """Reusable keyword arguments for trim_clip_range, per video."""
     settings = get_settings()
-    segments = transcript_service.get_transcript_for_video(db, video.id)
-    transcript_segments = [
-        (segment.start_seconds, segment.end_seconds, segment.text)
-        for segment in (segments.segments if segments else [])
-    ]
-    silences = [
-        (event.start_seconds, event.end_seconds)
-        for event in analysis_service.list_events(db, video.id)
-        if event.type == "silence"
-    ]
     return {
-        "segments": transcript_segments,
-        "silences": silences,
+        "segments": _transcript_segments(db, video.id),
+        "silences": _silence_runs(db, video.id),
         "duration": video.duration_seconds or 0.0,
         "sentence_tolerance": settings.trim_sentence_tolerance_seconds,
         "pre_roll": settings.trim_pre_roll_seconds,
         "post_roll": settings.trim_post_roll_seconds,
     }
+
+
+def _transcript_segments(db: DbSession, video_id: int) -> list[tuple[float, float, str]]:
+    transcript = transcript_service.get_transcript_for_video(db, video_id)
+    if transcript is None:
+        return []
+    return [
+        (segment.start_seconds, segment.end_seconds, segment.text)
+        for segment in transcript.segments
+    ]
+
+
+def _silence_runs(db: DbSession, video_id: int) -> list[tuple[float, float]]:
+    return [
+        (event.start_seconds, event.end_seconds)
+        for event in analysis_service.list_events(db, video_id)
+        if event.type == "silence"
+    ]
 
 
 @router.get("/videos/{video_id}/clips", response_model=list[ClipRead])
@@ -161,6 +180,27 @@ def get_clip_file(clip_id: int, db: DbSession) -> FileResponse:
     if path is None or not path.is_file():
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Clip file not rendered")
     return FileResponse(path, media_type="video/mp4")
+
+
+@router.get("/clips/{clip_id}/captions/{fmt}")
+def get_clip_captions(clip_id: int, fmt: str, db: DbSession) -> FileResponse:
+    """Download a clip's SRT or ASS caption track."""
+    if fmt not in CAPTION_MEDIA_TYPES:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown caption format")
+    clip = clip_service.get_clip(db, clip_id)
+    if clip is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Clip not found")
+    try:
+        path = asset_path(clip.video.project_id, clip_service.relative_caption_path(clip.id, fmt))
+    except WorkspaceError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    if path is None or not path.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Clip has no captions")
+    return FileResponse(
+        path,
+        media_type=CAPTION_MEDIA_TYPES[fmt],
+        filename=f"clip-{clip_id}.{fmt}",
+    )
 
 
 def _select_candidates(

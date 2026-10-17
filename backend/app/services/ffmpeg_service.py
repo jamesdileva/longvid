@@ -232,30 +232,64 @@ def extract_audio(video_path: Path, output_path: Path, sample_rate: int, channel
     return output_path
 
 
-def cut_clip(video_path: Path, output_path: Path, start_seconds: float, end_seconds: float) -> Path:
-    """Cut a time range out of a video into a new MP4 (stream copy)."""
+def cut_clip(
+    video_path: Path,
+    output_path: Path,
+    start_seconds: float,
+    end_seconds: float,
+    *,
+    subtitles_path: Path | None = None,
+) -> Path:
+    """Cut a time range out of a video into a new MP4.
+
+    Without subtitles the range is stream-copied (lossless, fast). With a
+    subtitle file the video is re-encoded so ``libass`` can burn the captions;
+    the cue timings are expected to be relative to the clip start.
+    """
     settings = get_settings()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     duration = max(end_seconds - start_seconds, 0.1)
-    result = _run(
-        [
-            settings.ffmpeg_path,
-            "-y",
-            "-ss",
-            f"{max(start_seconds, 0):.3f}",
-            "-i",
-            str(video_path),
-            "-t",
-            f"{duration:.3f}",
-            "-c",
+    command = [
+        settings.ffmpeg_path,
+        "-y",
+        "-ss",
+        f"{max(start_seconds, 0):.3f}",
+        "-i",
+        str(video_path),
+        "-t",
+        f"{duration:.3f}",
+    ]
+    if subtitles_path is None:
+        command += ["-c", "copy"]
+    else:
+        command += [
+            "-vf",
+            _subtitles_filter(subtitles_path),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
             "copy",
-            str(output_path),
-        ],
-        timeout=_FFMPEG_TIMEOUT,
-    )
+        ]
+    command.append(str(output_path))
+    result = _run(command, timeout=_FFMPEG_TIMEOUT)
     if result.returncode != 0 or not output_path.is_file():
         raise FFmpegError(f"Clip cut failed: {result.stderr.strip()}")
     return output_path
+
+
+def _subtitles_filter(subtitles_path: Path) -> str:
+    """Build a ``subtitles`` filter argument with FFmpeg-escaped path.
+
+    On Windows the drive colon must be escaped inside the filtergraph.
+    """
+    escaped = subtitles_path.as_posix().replace("\\", "\\\\").replace(":", "\\:")
+    return f"subtitles=filename='{escaped}'"
 
 
 def _is_valid_wav(path: Path) -> bool:

@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     trim_pre_roll_seconds: float = 0.5
     trim_post_roll_seconds: float = 1.0
 
+    # Captions (roadmap 10.3): generate SRT/ASS and burn them for profiles
+    # that request captions. Disable to render clips caption-free.
+    captions_enabled: bool = True
+
     # Candidate scoring weights (implementation-guide §16).
     scoring_weights: dict[str, float] = {
         "semantic": 0.30,

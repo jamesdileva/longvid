@@ -585,6 +585,18 @@ a {
   padding: 1px 8px;
 }
 
+.clip-captions {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.clip-captions a {
+  color: var(--accent);
+}
+
 .clip-actions {
   display: flex;
   flex-wrap: wrap;

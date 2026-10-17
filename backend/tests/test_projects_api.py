@@ -18,6 +18,7 @@ EXPECTED_SUBDIRS = {
     "analysis",
     "clips",
     "clips/generated",
+    "clips/captions",
     "clips/previews",
     "exports",
     "exports/shorts",
