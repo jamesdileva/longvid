@@ -2,7 +2,7 @@
 
 Each profile bundles the destination settings a clip is aimed at:
 
-* ``clean``   - raw landscape cut, no reframing, no captions.
+* ``clean``   - raw cut at the source aspect ratio, no reframing, no captions.
 * ``youtube`` - standard landscape, mild normalization, minimal reframing.
 * ``shorts``  - vertical, captioned, moderate zoom, capped at 60 seconds.
 * ``tiktok``  - vertical, captioned, energetic emphasis, capped at 60 seconds.
@@ -14,7 +14,7 @@ of truth. Applying a profile's settings to pixels happens in later phases
 
 from dataclasses import asdict, dataclass
 
-SUPPORTED_ASPECT_RATIOS = ("16:9", "9:16", "1:1")
+SUPPORTED_ASPECT_RATIOS = ("original", "16:9", "9:16", "1:1")
 
 DEFAULT_PROFILE_KEY = "clean"
 
@@ -45,8 +45,8 @@ _PROFILES: tuple[EditingProfile, ...] = (
     EditingProfile(
         key="clean",
         label="Clean",
-        description="Raw landscape cut with no reframing or captions.",
-        aspect_ratio="16:9",
+        description="Raw cut at the source aspect ratio, no reframing or captions.",
+        aspect_ratio="original",
         captions=False,
         zoom=False,
         audio_normalization=False,

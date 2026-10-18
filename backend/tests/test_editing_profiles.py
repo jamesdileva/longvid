@@ -25,9 +25,9 @@ class TestProfileCatalog:
             "tiktok",
         ]
 
-    def test_clean_is_an_unedited_landscape_cut(self) -> None:
+    def test_clean_keeps_the_source_aspect_ratio_unedited(self) -> None:
         profile = get_profile("clean")
-        assert profile.aspect_ratio == "16:9"
+        assert profile.aspect_ratio == "original"
         assert profile.captions is False
         assert profile.zoom is False
         assert profile.audio_normalization is False

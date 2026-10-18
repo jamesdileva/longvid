@@ -16,7 +16,7 @@ const PROFILES: EditingProfile[] = [
     key: 'clean',
     label: 'Clean',
     description: 'Raw cut',
-    aspect_ratio: '16:9',
+    aspect_ratio: 'original',
     captions: false,
     zoom: false,
     audio_normalization: false,
@@ -50,7 +50,7 @@ function clip(overrides: Partial<Clip> = {}): Clip {
       source: 'source/stream_recording.mp4',
       start: 812.2,
       end: 851.8,
-      aspect_ratio: '16:9',
+      aspect_ratio: 'original',
       captions: false,
       zoom: false,
       audio_normalization: false,
@@ -185,6 +185,40 @@ describe('ClipsPanel', () => {
     expect(plan).toHaveTextContent('captions');
     expect(plan).toHaveTextContent('zoom');
     expect(screen.queryByTestId('clip-trim')).not.toBeInTheDocument();
+  });
+
+  it('shows the reframed output resolution for converted clips', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_profile: 'shorts',
+        editing_plan: {
+          plan_version: 1,
+          profile: 'shorts',
+          source: 'source/stream_recording.mp4',
+          start: 0,
+          end: 30,
+          aspect_ratio: '9:16',
+          captions: true,
+          zoom: true,
+          audio_normalization: true,
+          framing: {
+            target_width: 1080,
+            target_height: 1920,
+            crop_width: 528,
+            crop_height: 938,
+            crop_x: 696,
+            crop_y: 70,
+            zoom: 1.15,
+            filter: 'crop=528:938:696:70,scale=1080:1920,setsar=1',
+          },
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-framing')).toBeInTheDocument());
+    expect(screen.getByTestId('clip-framing')).toHaveTextContent('1080x1920');
   });
 
   it('offers SRT and ASS caption downloads when present', async () => {

@@ -59,7 +59,7 @@ class TestCutClipAudio:
             output,
             0.0,
             2.0,
-            subtitles_path=subtitle,
+            video_filters=[ffmpeg_service.subtitles_filter(subtitle)],
             audio_filter="aresample=8000",
         )
 

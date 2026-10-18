@@ -99,7 +99,13 @@ class TestBurnSubtitles:
         )
         output = tmp_path / "out.mp4"
 
-        ffmpeg_service.cut_clip(synthetic_video, output, 0.0, 2.0, subtitles_path=subtitle)
+        ffmpeg_service.cut_clip(
+            synthetic_video,
+            output,
+            0.0,
+            2.0,
+            video_filters=[ffmpeg_service.subtitles_filter(subtitle)],
+        )
 
         assert output.is_file()
         info = ffmpeg_service.probe_file(output)

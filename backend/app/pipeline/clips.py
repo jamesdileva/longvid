@@ -47,13 +47,14 @@ def generate_clips(db: Session, job: ProcessingJob) -> None:
         db.commit()
 
         output = clip_service.clip_output_path(video.project_id, clip.id)
+        filters = _video_filters(video.project_id, clip)
         try:
             ffmpeg_service.cut_clip(
                 source,
                 output,
                 clip.start_seconds,
                 clip.end_seconds,
-                subtitles_path=_subtitle_track(video.project_id, clip),
+                video_filters=filters,
                 audio_filter=_audio_filter(clip),
             )
             clip.file_path = clip_service.relative_clip_path(clip.id)
@@ -70,6 +71,18 @@ def generate_clips(db: Session, job: ProcessingJob) -> None:
         job_service.update_progress(db, job, (index + 1) / total)
 
     job_service.complete_job(db, job)
+
+
+def _video_filters(project_id: str, clip) -> list[str]:
+    """Video filters for a clip: reframing first, then burned captions."""
+    filters: list[str] = []
+    framing = (clip.editing_plan or {}).get("framing") or {}
+    if framing.get("filter"):
+        filters.append(framing["filter"])
+    subtitles = _subtitle_track(project_id, clip)
+    if subtitles is not None:
+        filters.append(ffmpeg_service.subtitles_filter(subtitles))
+    return filters
 
 
 def _subtitle_track(project_id: str, clip) -> Path | None:

@@ -196,6 +196,12 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                 {clip.editing_plan && (
                   <span className="clip-plan" data-testid="clip-plan">
                     <span>{clip.editing_plan.aspect_ratio}</span>
+                    {clip.editing_plan.framing && (
+                      <span data-testid="clip-framing">
+                        {clip.editing_plan.framing.target_width}x
+                        {clip.editing_plan.framing.target_height}
+                      </span>
+                    )}
                     {clip.editing_plan.captions && <span>captions</span>}
                     {clip.editing_plan.zoom && <span>zoom</span>}
                     {clip.editing_plan.audio && (

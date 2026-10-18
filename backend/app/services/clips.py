@@ -16,6 +16,7 @@ from app.editing import (
     build_ass,
     build_editing_plan,
     build_srt,
+    framing_plan,
     get_profile,
     style_for_profile,
 )
@@ -64,6 +65,10 @@ def create_clip(
     )
     if audio is not None:
         plan["audio"] = audio.to_dict()
+    if video is not None:
+        framing = framing_plan(profile, source_width=video.width, source_height=video.height)
+        if framing is not None:
+            plan["framing"] = framing.to_dict()
     start = plan["start"]
     end = plan["end"]
     has_captions = bool(profile.captions and caption_cues)

@@ -11,6 +11,7 @@ import json
 import re
 import shutil
 import subprocess
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -238,15 +239,15 @@ def cut_clip(
     start_seconds: float,
     end_seconds: float,
     *,
-    subtitles_path: Path | None = None,
+    video_filters: Sequence[str] = (),
     audio_filter: str | None = None,
 ) -> Path:
     """Cut a time range out of a video into a new MP4.
 
-    With neither subtitles nor an audio filter the range is stream-copied
-    (lossless, fast). A subtitle file forces a video re-encode so ``libass`` can
-    burn the captions; an audio filter re-encodes audio (e.g. loudness
-    normalization). Cue timings are expected to be relative to the clip start.
+    With no filters the range is stream-copied (lossless, fast). Any video
+    filter (reframing, burned captions) forces a video re-encode; an audio
+    filter re-encodes audio (e.g. loudness normalization). The caller supplies
+    ready-made filter strings (see :func:`subtitles_filter`).
     """
     settings = get_settings()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -261,15 +262,14 @@ def cut_clip(
         "-t",
         f"{duration:.3f}",
     ]
-    if subtitles_path is None and audio_filter is None:
+    filters = list(video_filters)
+    if not filters and audio_filter is None:
         command += ["-c", "copy"]
     else:
-        if subtitles_path is None:
-            command += ["-c:v", "copy"]
-        else:
+        if filters:
             command += [
                 "-vf",
-                _subtitles_filter(subtitles_path),
+                ",".join(filters),
                 "-c:v",
                 "libx264",
                 "-preset",
@@ -279,6 +279,8 @@ def cut_clip(
                 "-pix_fmt",
                 "yuv420p",
             ]
+        else:
+            command += ["-c:v", "copy"]
         if audio_filter is None:
             command += ["-c:a", "copy"]
         else:
@@ -290,7 +292,7 @@ def cut_clip(
     return output_path
 
 
-def _subtitles_filter(subtitles_path: Path) -> str:
+def subtitles_filter(subtitles_path: Path) -> str:
     """Build a ``subtitles`` filter argument with FFmpeg-escaped path.
 
     On Windows the drive colon must be escaped inside the filtergraph.

@@ -15,6 +15,7 @@ from app.editing.captions import (
     cues_for_range,
     style_for_profile,
 )
+from app.editing.framing import ASPECT_TARGETS, Framing, framing_plan
 from app.editing.plan import build_editing_plan, clamp_duration
 from app.editing.profiles import (
     DEFAULT_PROFILE_KEY,
@@ -28,6 +29,7 @@ from app.editing.profiles import (
 from app.editing.trimming import TrimResult, trim_clip_range
 
 __all__ = [
+    "ASPECT_TARGETS",
     "DEFAULT_PROFILE_KEY",
     "PROFILES",
     "SUPPORTED_ASPECT_RATIOS",
@@ -35,6 +37,7 @@ __all__ = [
     "CaptionCue",
     "CaptionStyle",
     "EditingProfile",
+    "Framing",
     "TrimResult",
     "UnknownProfileError",
     "audio_processing",
@@ -43,6 +46,7 @@ __all__ = [
     "build_srt",
     "clamp_duration",
     "cues_for_range",
+    "framing_plan",
     "get_profile",
     "list_profiles",
     "style_for_profile",

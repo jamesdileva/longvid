@@ -23,6 +23,18 @@ export interface EditingPlanAudio {
   filter: string;
 }
 
+/** Resolved center-crop/scale conversion recorded by the backend (roadmap 11). */
+export interface EditingPlanFraming {
+  target_width: number;
+  target_height: number;
+  crop_width: number;
+  crop_height: number;
+  crop_x: number;
+  crop_y: number;
+  zoom: number;
+  filter: string;
+}
+
 /** Deterministic editing plan recorded on a clip (guide §21). */
 export interface EditingPlan {
   plan_version: number;
@@ -36,6 +48,7 @@ export interface EditingPlan {
   audio_normalization: boolean;
   trim?: EditingPlanTrim;
   audio?: EditingPlanAudio;
+  framing?: EditingPlanFraming;
 }
 
 export interface Clip {

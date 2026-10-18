@@ -629,6 +629,15 @@ normalization (`loudnorm`) delivers consistent, broadcast-safe levels. The
 resolved parameters and the exact chain are snapshotted in the plan's `audio`
 entry, and rendering re-encodes audio to AAC when a chain is present.
 
+Phase 11.1/11.2 add aspect-ratio conversion and center cropping
+(`backend/app/editing/framing.py`): a profile's target aspect ratio (`original`,
+`16:9`, `9:16`, `1:1`) is resolved against the source resolution into a
+deterministic center-crop + scale FFmpeg chain, with a mild zoom for
+zoom-enabled profiles. It is a no-op when the profile keeps the source ratio or
+the source already matches the target. The chain is snapshotted in the plan's
+`framing` entry. Subject-tracking / dynamic reframing (roadmap 11.3) is future
+work and plugs into the same stage.
+
 ---
 
 # 17. Project Structure

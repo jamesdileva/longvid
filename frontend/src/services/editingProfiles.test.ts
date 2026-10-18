@@ -6,7 +6,7 @@ const PROFILES = [
     key: 'clean',
     label: 'Clean',
     description: 'Raw landscape cut',
-    aspect_ratio: '16:9',
+    aspect_ratio: 'original',
     captions: false,
     zoom: false,
     audio_normalization: false,
