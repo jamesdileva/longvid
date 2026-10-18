@@ -6,6 +6,7 @@ into a deterministic editing plan (§21) that later render stages execute, and
 trims the range to natural sentence/silence boundaries first (roadmap 10.2).
 """
 
+from app.editing.audio import AudioProcessing, audio_processing
 from app.editing.captions import (
     CaptionCue,
     CaptionStyle,
@@ -30,11 +31,13 @@ __all__ = [
     "DEFAULT_PROFILE_KEY",
     "PROFILES",
     "SUPPORTED_ASPECT_RATIOS",
+    "AudioProcessing",
     "CaptionCue",
     "CaptionStyle",
     "EditingProfile",
     "TrimResult",
     "UnknownProfileError",
+    "audio_processing",
     "build_ass",
     "build_editing_plan",
     "build_srt",

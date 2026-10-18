@@ -14,6 +14,15 @@ export interface EditingPlanTrim {
   silence_removed_seconds: number;
 }
 
+/** Resolved audio processing recorded by the backend (roadmap 10.4). */
+export interface EditingPlanAudio {
+  loudness_target_lufs: number;
+  true_peak_db: number;
+  loudness_range: number;
+  gate_threshold_db: number;
+  filter: string;
+}
+
 /** Deterministic editing plan recorded on a clip (guide §21). */
 export interface EditingPlan {
   plan_version: number;
@@ -26,6 +35,7 @@ export interface EditingPlan {
   zoom: boolean;
   audio_normalization: boolean;
   trim?: EditingPlanTrim;
+  audio?: EditingPlanAudio;
 }
 
 export interface Clip {

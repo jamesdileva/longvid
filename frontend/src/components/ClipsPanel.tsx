@@ -198,6 +198,9 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                     <span>{clip.editing_plan.aspect_ratio}</span>
                     {clip.editing_plan.captions && <span>captions</span>}
                     {clip.editing_plan.zoom && <span>zoom</span>}
+                    {clip.editing_plan.audio && (
+                      <span data-testid="clip-audio">audio-norm</span>
+                    )}
                     {clip.editing_plan.trim?.applied &&
                       clip.editing_plan.trim.silence_removed_seconds >= 1 && (
                         <span data-testid="clip-trim">

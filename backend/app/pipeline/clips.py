@@ -54,6 +54,7 @@ def generate_clips(db: Session, job: ProcessingJob) -> None:
                 clip.start_seconds,
                 clip.end_seconds,
                 subtitles_path=_subtitle_track(video.project_id, clip),
+                audio_filter=_audio_filter(clip),
             )
             clip.file_path = clip_service.relative_clip_path(clip.id)
             clip.file_size_bytes = output.stat().st_size
@@ -81,3 +82,10 @@ def _subtitle_track(project_id: str, clip) -> Path | None:
     except WorkspaceError:
         return None
     return path if path is not None and path.is_file() else None
+
+
+def _audio_filter(clip) -> str | None:
+    """The audio filter chain recorded in the clip's plan, if any."""
+    plan = clip.editing_plan or {}
+    audio = plan.get("audio") or {}
+    return audio.get("filter")

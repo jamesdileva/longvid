@@ -203,6 +203,36 @@ describe('ClipsPanel', () => {
     expect(links[0]).toHaveAttribute('href', expect.stringContaining('/api/clips/1/captions/srt'));
   });
 
+  it('flags clips whose audio was normalized', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_plan: {
+          plan_version: 1,
+          profile: 'youtube',
+          source: 'source/stream_recording.mp4',
+          start: 812.2,
+          end: 851.8,
+          aspect_ratio: '16:9',
+          captions: false,
+          zoom: false,
+          audio_normalization: true,
+          audio: {
+            loudness_target_lufs: -16,
+            true_peak_db: -1.5,
+            loudness_range: 11,
+            gate_threshold_db: -45,
+            filter: 'agate=threshold=-45dB:ratio=2,loudnorm=I=-16:TP=-1.5:LRA=11',
+          },
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-audio')).toBeInTheDocument());
+    expect(screen.getByTestId('clip-audio')).toHaveTextContent('audio-norm');
+  });
+
   it('flags clips whose dead air was trimmed', async () => {
     vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
       clip({

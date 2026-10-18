@@ -622,6 +622,13 @@ GET /clips/{id}/captions/srt
 GET /clips/{id}/captions/ass
 ```
 
+Phase 10.4 adds audio processing (`backend/app/editing/audio.py`): profiles with
+`audio_normalization` get a deterministic FFmpeg filter chain — a gentle gate
+(`agate`) keeps silence and the noise floor quiet, then EBU R128 loudness
+normalization (`loudnorm`) delivers consistent, broadcast-safe levels. The
+resolved parameters and the exact chain are snapshotted in the plan's `audio`
+entry, and rendering re-encodes audio to AAC when a chain is present.
+
 ---
 
 # 17. Project Structure

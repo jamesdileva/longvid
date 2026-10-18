@@ -84,6 +84,13 @@ class Settings(BaseSettings):
     # that request captions. Disable to render clips caption-free.
     captions_enabled: bool = True
 
+    # Audio processing (roadmap 10.4): profiles with audio_normalization get a
+    # gate + EBU R128 loudness normalization chain at render time.
+    audio_loudness_target_lufs: float = -16.0
+    audio_true_peak_db: float = -1.5
+    audio_loudness_range: float = 11.0
+    audio_gate_threshold_db: float = -45.0
+
     # Candidate scoring weights (implementation-guide §16).
     scoring_weights: dict[str, float] = {
         "semantic": 0.30,

@@ -7,10 +7,12 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.editing import (
     DEFAULT_PROFILE_KEY,
     CaptionCue,
     EditingProfile,
+    audio_processing,
     build_ass,
     build_editing_plan,
     build_srt,
@@ -52,6 +54,16 @@ def create_clip(
     )
     if trim is not None:
         plan["trim"] = trim
+    settings = get_settings()
+    audio = audio_processing(
+        profile,
+        loudness_target_lufs=settings.audio_loudness_target_lufs,
+        true_peak_db=settings.audio_true_peak_db,
+        loudness_range=settings.audio_loudness_range,
+        gate_threshold_db=settings.audio_gate_threshold_db,
+    )
+    if audio is not None:
+        plan["audio"] = audio.to_dict()
     start = plan["start"]
     end = plan["end"]
     has_captions = bool(profile.captions and caption_cues)
