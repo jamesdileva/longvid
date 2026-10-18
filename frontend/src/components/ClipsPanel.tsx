@@ -200,6 +200,7 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                       <span data-testid="clip-framing">
                         {clip.editing_plan.framing.target_width}x
                         {clip.editing_plan.framing.target_height}
+                        {clip.editing_plan.framing.dynamic ? ' tracked' : ''}
                       </span>
                     )}
                     {clip.editing_plan.captions && <span>captions</span>}

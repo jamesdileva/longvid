@@ -638,6 +638,22 @@ the source already matches the target. The chain is snapshotted in the plan's
 `framing` entry. Subject-tracking / dynamic reframing (roadmap 11.3) is future
 work and plugs into the same stage.
 
+Phase 11.3 adds smart reframing (`backend/app/editing/reframing.py` +
+`backend/app/providers/vision/`): a `track_subjects` job runs a vision provider
+(OpenCV Haar-cascade face detection by default; a deterministic synthetic
+provider in tests) over the source and stores a normalized subject track on the
+video. When a clip is created and a track overlaps its range, the crop size
+comes from the static framing but the window *follows the subject*: the
+positions are clamped to the frame, smoothed and decimated to a bounded set of
+waypoints, and emitted as an FFmpeg `crop` expression over `t`. Without a track
+(or when `smart_reframe_enabled` is false) reframing falls back to the static
+center crop. The chain is snapshotted in the plan's `framing` entry
+(`dynamic: true`, `keyframes`).
+
+```http
+POST /videos/{id}/process   { "type": "track_subjects" }
+```
+
 ---
 
 # 17. Project Structure

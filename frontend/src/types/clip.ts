@@ -33,6 +33,8 @@ export interface EditingPlanFraming {
   crop_y: number;
   zoom: number;
   filter: string;
+  dynamic?: boolean;
+  keyframes?: number[][];
 }
 
 /** Deterministic editing plan recorded on a clip (guide §21). */

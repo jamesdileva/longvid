@@ -11,17 +11,21 @@ from app.config import get_settings
 from app.editing import (
     DEFAULT_PROFILE_KEY,
     CaptionCue,
+    DynamicFraming,
     EditingProfile,
+    Framing,
     audio_processing,
     build_ass,
     build_editing_plan,
     build_srt,
+    dynamic_framing,
     framing_plan,
     get_profile,
     style_for_profile,
 )
 from app.models.clip import Clip, ClipStatus
 from app.models.video import Video
+from app.providers.vision import SubjectTrack
 from app.services.workspace import WorkspaceError, asset_path, ensure_subdir
 
 RENDERABLE_STATUSES = (ClipStatus.PENDING, ClipStatus.FAILED)
@@ -65,12 +69,11 @@ def create_clip(
     )
     if audio is not None:
         plan["audio"] = audio.to_dict()
-    if video is not None:
-        framing = framing_plan(profile, source_width=video.width, source_height=video.height)
-        if framing is not None:
-            plan["framing"] = framing.to_dict()
     start = plan["start"]
     end = plan["end"]
+    framing = _framing_for_clip(profile, video, settings, start=start, end=end)
+    if framing is not None:
+        plan["framing"] = framing.to_dict()
     has_captions = bool(profile.captions and caption_cues)
     plan["captions"] = has_captions
     if has_captions:
@@ -96,6 +99,34 @@ def create_clip(
             ass=build_ass(caption_cues or [], style_for_profile(profile)),
         )
     return clip
+
+
+def _framing_for_clip(
+    profile: EditingProfile,
+    video: Video | None,
+    settings,
+    *,
+    start: float,
+    end: float,
+) -> Framing | DynamicFraming | None:
+    """Subject-following crop when a track exists, else a static center crop."""
+    if video is None:
+        return None
+    track = SubjectTrack.from_dict(video.subject_track)
+    if settings.smart_reframe_enabled and not track.is_empty:
+        dynamic = dynamic_framing(
+            profile,
+            source_width=video.width,
+            source_height=video.height,
+            track=track,
+            start_seconds=start,
+            end_seconds=end,
+            smooth_window_seconds=settings.reframe_smooth_window_seconds,
+            max_keyframes=settings.reframe_max_keyframes,
+        )
+        if dynamic is not None:
+            return dynamic
+    return framing_plan(profile, source_width=video.width, source_height=video.height)
 
 
 def list_video_clips(db: Session, video_id: int) -> list[Clip]:

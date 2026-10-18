@@ -23,6 +23,7 @@ class JobType(str, enum.Enum):
     TRANSCRIBE = "transcribe"
     DETECT_SCENES = "detect_scenes"
     ANALYZE_EVENTS = "analyze_events"
+    TRACK_SUBJECTS = "track_subjects"
     GENERATE_CANDIDATES = "generate_candidates"
     SCORE_CANDIDATES = "score_candidates"
     GENERATE_CLIP = "generate_clip"

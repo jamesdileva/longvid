@@ -4,7 +4,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -57,6 +57,7 @@ class Video(Base):
     thumbnail_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     preview_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     audio_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subject_track: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow, nullable=False)
 

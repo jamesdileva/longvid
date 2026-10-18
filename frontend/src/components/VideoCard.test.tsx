@@ -47,6 +47,7 @@ function renderCard(video: Video = VIDEO, jobs: Job[] = []) {
     onExtractAudio: vi.fn(),
     onTranscribe: vi.fn(),
     onAnalyze: vi.fn(),
+    onTrackSubjects: vi.fn(),
     onGenerateCandidates: vi.fn(),
     onDelete: vi.fn(),
   };
@@ -152,6 +153,20 @@ describe('VideoCard', () => {
     ]);
 
     expect(screen.getByText('Processing: Analyze')).toBeInTheDocument();
+  });
+
+  it('starts subject tracking when requested', () => {
+    const handlers = renderCard();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Track subjects' }));
+
+    expect(handlers.onTrackSubjects).toHaveBeenCalledWith(VIDEO);
+  });
+
+  it('labels a running subject-tracking job', () => {
+    renderCard(VIDEO, [makeJob({ type: 'track_subjects', status: 'running', progress: 0.5 })]);
+
+    expect(screen.getByText('Processing: Track subjects')).toBeInTheDocument();
   });
 
   it('cancels an active job', async () => {

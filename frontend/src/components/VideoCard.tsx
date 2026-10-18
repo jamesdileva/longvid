@@ -13,6 +13,7 @@ interface VideoCardProps {
   onExtractAudio: (video: Video) => void;
   onTranscribe: (video: Video) => void;
   onAnalyze: (video: Video) => void;
+  onTrackSubjects: (video: Video) => void;
   onGenerateCandidates: (video: Video) => void;
   onDelete: (videoId: number) => void;
   /** Registers the preview <video> element so parents can seek it. */
@@ -23,6 +24,7 @@ const JOB_LABELS: Record<string, string> = {
   extract_audio: 'Extract audio',
   transcribe: 'Transcribe',
   analyze_events: 'Analyze',
+  track_subjects: 'Track subjects',
   generate_candidates: 'Detect highlights',
   score_candidates: 'Re-score highlights',
   generate_clip: 'Generate clips',
@@ -34,6 +36,7 @@ export default function VideoCard({
   onExtractAudio,
   onTranscribe,
   onAnalyze,
+  onTrackSubjects,
   onGenerateCandidates,
   onDelete,
   registerElement,
@@ -157,6 +160,13 @@ export default function VideoCard({
             disabled={Boolean(activeJob) || !audioReady}
           >
             {JOB_LABELS.analyze_events}
+          </button>
+          <button
+            type="button"
+            onClick={() => onTrackSubjects(video)}
+            disabled={Boolean(activeJob)}
+          >
+            {JOB_LABELS.track_subjects}
           </button>
           <button
             type="button"

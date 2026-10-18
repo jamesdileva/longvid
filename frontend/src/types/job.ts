@@ -9,6 +9,7 @@ export type JobType =
   | 'transcribe'
   | 'detect_scenes'
   | 'analyze_events'
+  | 'track_subjects'
   | 'generate_candidates'
   | 'score_candidates'
   | 'generate_clip'

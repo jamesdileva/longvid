@@ -80,6 +80,11 @@ backend\.venv\Scripts\pip install -e backend[dev]
 # by setting LONGVID_TRANSCRIPTION_PROVIDER=synthetic
 backend\.venv\Scripts\pip install -e backend[whisper]
 
+# Smart reframing (face detection with OpenCV); optional — without it, the
+# track_subjects job stores an empty track and clips use a static center crop.
+# Set LONGVID_VISION_PROVIDER=synthetic for the deterministic test provider.
+backend\.venv\Scripts\pip install -e backend[vision]
+
 # Node workspaces (frontend + electron)
 npm install
 ```

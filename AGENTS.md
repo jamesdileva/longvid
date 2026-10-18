@@ -56,6 +56,11 @@ backend\.venv\Scripts\pip install -e backend[dev]
 # for the deterministic offline stand-in used by tests.
 backend\.venv\Scripts\pip install -e backend[whisper]
 
+# Optional: OpenCV face detection for smart reframing (roadmap 11.3). Without
+# it the track_subjects job stores an empty track and clips use a static crop;
+# set LONGVID_VISION_PROVIDER=synthetic for the deterministic test provider.
+backend\.venv\Scripts\pip install -e backend[vision]
+
 # Node (root workspace)
 npm install
 ```

@@ -26,6 +26,7 @@ from app.editing.profiles import (
     get_profile,
     list_profiles,
 )
+from app.editing.reframing import DynamicFraming, dynamic_framing
 from app.editing.trimming import TrimResult, trim_clip_range
 
 __all__ = [
@@ -36,6 +37,7 @@ __all__ = [
     "AudioProcessing",
     "CaptionCue",
     "CaptionStyle",
+    "DynamicFraming",
     "EditingProfile",
     "Framing",
     "TrimResult",
@@ -46,6 +48,7 @@ __all__ = [
     "build_srt",
     "clamp_duration",
     "cues_for_range",
+    "dynamic_framing",
     "framing_plan",
     "get_profile",
     "list_profiles",

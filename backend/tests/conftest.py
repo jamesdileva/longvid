@@ -120,6 +120,7 @@ def isolated_env(tmp_path, monkeypatch) -> Iterator[None]:
     # Tests always use the deterministic providers (no model downloads/servers).
     monkeypatch.setenv("LONGVID_TRANSCRIPTION_PROVIDER", "synthetic")
     monkeypatch.setenv("LONGVID_LLM_PROVIDER", "fake")
+    monkeypatch.setenv("LONGVID_VISION_PROVIDER", "synthetic")
     get_settings.cache_clear()
     reset_caches()
     init_db()

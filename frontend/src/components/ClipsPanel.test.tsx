@@ -221,6 +221,45 @@ describe('ClipsPanel', () => {
     expect(screen.getByTestId('clip-framing')).toHaveTextContent('1080x1920');
   });
 
+  it('marks a subject-tracked dynamic crop', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_profile: 'shorts',
+        editing_plan: {
+          plan_version: 1,
+          profile: 'shorts',
+          source: 'source/stream_recording.mp4',
+          start: 0,
+          end: 30,
+          aspect_ratio: '9:16',
+          captions: true,
+          zoom: true,
+          audio_normalization: true,
+          framing: {
+            target_width: 1080,
+            target_height: 1920,
+            crop_width: 528,
+            crop_height: 938,
+            crop_x: 696,
+            crop_y: 70,
+            zoom: 1.15,
+            filter: "crop=528:938:'if(lt(t,0.000),696.000,700.000)':'70.000',scale=1080:1920,setsar=1",
+            dynamic: true,
+            keyframes: [
+              [0, 696, 70],
+              [4, 700, 70],
+            ],
+          },
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-framing')).toBeInTheDocument());
+    expect(screen.getByTestId('clip-framing')).toHaveTextContent('tracked');
+  });
+
   it('offers SRT and ASS caption downloads when present', async () => {
     vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
       clip({

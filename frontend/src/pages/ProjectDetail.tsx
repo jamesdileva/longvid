@@ -153,6 +153,17 @@ export default function ProjectDetail() {
     }
   }
 
+  async function handleTrackSubjects(video: Video) {
+    setError(null);
+    try {
+      await processVideo(video.id, 'track_subjects');
+      const jobs = await listVideoJobs(video.id);
+      setJobsByVideo((current) => ({ ...current, [video.id]: jobs }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start subject tracking');
+    }
+  }
+
   async function handleGenerateCandidates(video: Video) {
     setError(null);
     try {
@@ -258,6 +269,7 @@ export default function ProjectDetail() {
                 onExtractAudio={handleExtractAudio}
                 onTranscribe={handleTranscribe}
                 onAnalyze={handleAnalyze}
+                onTrackSubjects={handleTrackSubjects}
                 onGenerateCandidates={handleGenerateCandidates}
                 onDelete={handleDeleteVideo}
                 registerElement={(element) => registerVideoElement(video.id, element)}

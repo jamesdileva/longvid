@@ -91,6 +91,16 @@ class Settings(BaseSettings):
     audio_loudness_range: float = 11.0
     audio_gate_threshold_db: float = -45.0
 
+    # Smart reframing (roadmap 11.3): subject detection/tracking.
+    vision_provider: str = "opencv"  # opencv | synthetic (tests/offline)
+    vision_sample_interval_seconds: float = 1.0
+    vision_min_confidence: float = 0.5
+    # When true, clips with a subject track get a smooth dynamic crop; without a
+    # track (or when disabled) reframing falls back to a static center crop.
+    smart_reframe_enabled: bool = True
+    reframe_smooth_window_seconds: float = 2.0
+    reframe_max_keyframes: int = 20
+
     # Candidate scoring weights (implementation-guide §16).
     scoring_weights: dict[str, float] = {
         "semantic": 0.30,
