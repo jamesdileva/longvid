@@ -820,10 +820,19 @@ and queues a `generate_clip` job that renders each to MP4 with FFmpeg.
 ## Exports
 
 ```http
+GET  /export-presets
 POST /clips/{id}/export
 GET  /exports/{id}
+GET  /exports/{id}/file
 GET  /projects/{id}/exports
 ```
+
+Export presets are a pure catalog (roadmap Phase 18): `youtube`, `youtube_shorts`,
+`tiktok`, `instagram_reels` (H.264/AAC MP4) and `archive` (H.265 full-resolution).
+`POST /clips/{id}/export` snapshots the preset settings, the clip's editing plan
+and the application version onto an `Export` row and queues an `export` job that
+transcodes the finished clip to the delivery file. The snapshot makes every
+export reproducible and auditable (guide §24).
 
 ---
 

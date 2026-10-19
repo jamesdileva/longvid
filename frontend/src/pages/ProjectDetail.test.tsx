@@ -8,6 +8,7 @@ import * as jobsService from '../services/jobs';
 import * as candidatesService from '../services/candidates';
 import * as clipsService from '../services/clips';
 import * as editingProfilesService from '../services/editingProfiles';
+import * as exportsService from '../services/exports';
 import type { Project } from '../types/project';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
@@ -133,6 +134,8 @@ function mockBase() {
 beforeEach(() => {
   vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([]);
   vi.spyOn(editingProfilesService, 'listEditingProfiles').mockResolvedValue([]);
+  vi.spyOn(exportsService, 'listExportPresets').mockResolvedValue([]);
+  vi.spyOn(exportsService, 'listProjectExports').mockResolvedValue([]);
 });
 
 afterEach(() => {

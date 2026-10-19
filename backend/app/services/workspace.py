@@ -9,6 +9,7 @@ Layout per docs/architecture.md section 21::
         analysis/
         clips/generated/
         clips/previews/
+        exports/            # rendered delivery files (<export_id>.mp4)
         exports/shorts/
         exports/youtube/
 
@@ -36,6 +37,7 @@ WORKSPACE_SUBDIRS: tuple[str, ...] = (
     "clips/generated",
     "clips/captions",
     "clips/previews",
+    "exports",
     "exports/shorts",
     "exports/youtube",
 )

@@ -292,6 +292,74 @@ def cut_clip(
     return output_path
 
 
+_VIDEO_ENCODERS = {"h264": "libx264", "h265": "libx265"}
+
+
+def export_clip(
+    video_path: Path,
+    output_path: Path,
+    *,
+    video_codec: str,
+    audio_codec: str,
+    crf: int,
+    encoder_preset: str,
+    audio_bitrate: str,
+    max_width: int | None = None,
+    container: str = "mp4",
+) -> Path:
+    """Transcode a clip into a delivery file for a platform preset (§24).
+
+    The input is a finished clip (already cut, framed, captioned and
+    normalized); this stage only re-encodes it to the target codecs, quality
+    and resolution cap. Downgrades the width only when the source is larger.
+    """
+    settings = get_settings()
+    try:
+        video_encoder = _VIDEO_ENCODERS[video_codec]
+    except KeyError as exc:
+        raise FFmpegError(f"Unsupported export video codec: {video_codec!r}") from exc
+    if audio_codec != "aac":
+        raise FFmpegError(f"Unsupported export audio codec: {audio_codec!r}")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    command = [
+        settings.ffmpeg_path,
+        "-y",
+        "-i",
+        str(video_path),
+        "-c:v",
+        video_encoder,
+        "-preset",
+        encoder_preset,
+        "-crf",
+        str(crf),
+        "-pix_fmt",
+        "yuv420p",
+    ]
+    if video_encoder == "libx265":
+        # hvc1 tag keeps HEVC playable in QuickTime/Safari.
+        command += ["-tag:v", "hvc1"]
+    if max_width is not None:
+        info = probe_file(video_path)
+        if info.width is not None and info.width > max_width:
+            command += ["-vf", f"scale={max_width}:-2"]
+    command += [
+        "-c:a",
+        audio_codec,
+        "-b:a",
+        audio_bitrate,
+        "-movflags",
+        "+faststart",
+        "-f",
+        container,
+        str(output_path),
+    ]
+    result = _run(command, timeout=_FFMPEG_TIMEOUT)
+    if result.returncode != 0 or not output_path.is_file():
+        raise FFmpegError(f"Clip export failed: {result.stderr.strip()}")
+    return output_path
+
+
 def subtitles_filter(subtitles_path: Path) -> str:
     """Build a ``subtitles`` filter argument with FFmpeg-escaped path.
 

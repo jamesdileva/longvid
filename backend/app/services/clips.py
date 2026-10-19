@@ -26,6 +26,7 @@ from app.editing import (
 from app.models.clip import Clip, ClipStatus
 from app.models.video import Video
 from app.providers.vision import SubjectTrack
+from app.services import exports as export_service
 from app.services.workspace import WorkspaceError, asset_path, ensure_subdir
 
 RENDERABLE_STATUSES = (ClipStatus.PENDING, ClipStatus.FAILED)
@@ -192,6 +193,7 @@ def delete_clip(db: Session, clip_id: int) -> bool:
         return False
     _unlink_file(clip)
     _unlink_captions(clip)
+    export_service.delete_exports_for_clip(db, clip_id)
     db.delete(clip)
     db.commit()
     return True
@@ -219,10 +221,11 @@ def write_caption_files(project_id: str, clip_id: int, *, srt: str, ass: str) ->
 
 
 def delete_files_for_video(db: Session, video_id: int) -> None:
-    """Best-effort removal of a video's rendered clip and caption files."""
+    """Best-effort removal of a video's rendered clip, caption and export files."""
     for clip in list_video_clips(db, video_id):
         _unlink_file(clip)
         _unlink_captions(clip)
+    export_service.delete_exports_for_video(db, video_id)
 
 
 def relative_clip_path(clip_id: int) -> str:

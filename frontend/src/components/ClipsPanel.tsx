@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { deleteClip, generateClips, listProjectClips } from '../services/clips';
 import { listEditingProfiles } from '../services/editingProfiles';
+import { createExport, listExportPresets, listProjectExports } from '../services/exports';
 import { assetUrl } from '../services/videos';
 import type { Clip, ClipSelection } from '../types/clip';
 import type { EditingProfile } from '../types/editingProfile';
+import type { Export, ExportPreset } from '../types/export';
 import { formatDuration, formatFileSize } from '../utils/format';
 
 interface ClipVideo {
@@ -34,6 +36,10 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
   const [profiles, setProfiles] = useState<EditingProfile[]>([]);
   const [profileKey, setProfileKey] = useState('clean');
   const [generating, setGenerating] = useState(false);
+  const [presets, setPresets] = useState<ExportPreset[]>([]);
+  const [presetKey, setPresetKey] = useState('youtube');
+  const [exports, setExports] = useState<Export[]>([]);
+  const [exportingClipId, setExportingClipId] = useState<number | null>(null);
 
   const filenameById = useMemo(
     () => new Map(videos.map((video) => [video.id, video.filename])),
@@ -59,6 +65,22 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
   }, []);
 
   useEffect(() => {
+    let active = true;
+    listExportPresets()
+      .then((loaded) => {
+        if (!active) return;
+        setPresets(loaded);
+        if (loaded.length > 0) setPresetKey(loaded[0].key);
+      })
+      .catch(() => {
+        if (active) setPresets([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (selectedVideoId === null && videos.length > 0) {
       setSelectedVideoId(videos[0].id);
     }
@@ -66,8 +88,12 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
 
   const load = useCallback(async () => {
     try {
-      const loaded = await listProjectClips(projectId);
+      const [loaded, loadedExports] = await Promise.all([
+        listProjectClips(projectId),
+        listProjectExports(projectId),
+      ]);
       setClips(loaded);
+      setExports(loadedExports);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load clips');
@@ -84,13 +110,26 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
   const hasUnfinished = clips.some(
     (clip) => clip.status === 'pending' || clip.status === 'generating',
   );
+  const hasUnfinishedExports = exports.some(
+    (item) => item.status === 'pending' || item.status === 'processing',
+  );
   useEffect(() => {
-    if (!hasUnfinished) return;
+    if (!hasUnfinished && !hasUnfinishedExports) return;
     const timer = setInterval(() => {
       void load();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [hasUnfinished, load]);
+  }, [hasUnfinished, hasUnfinishedExports, load]);
+
+  const exportsByClip = useMemo(() => {
+    const map = new Map<number, Export[]>();
+    for (const item of exports) {
+      const list = map.get(item.clip_id) ?? [];
+      list.push(item);
+      map.set(item.clip_id, list);
+    }
+    return map;
+  }, [exports]);
 
   async function handleGenerate(selection: ClipSelection) {
     if (selectedVideoId === null) return;
@@ -114,6 +153,20 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
       setClips((current) => current.filter((clip) => clip.id !== clipId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete clip');
+    }
+  }
+
+  async function handleExport(clip: Clip) {
+    setExportingClipId(clip.id);
+    setError(null);
+    try {
+      await createExport(clip.id, presetKey);
+      onJobsChanged?.(clip.video_id);
+      setExports(await listProjectExports(projectId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start export');
+    } finally {
+      setExportingClipId(null);
     }
   }
 
@@ -154,6 +207,22 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                 {profiles.map((profile) => (
                   <option key={profile.key} value={profile.key}>
                     {profile.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {presets.length > 0 && (
+            <label className="clip-export-select">
+              Export
+              <select
+                value={presetKey}
+                aria-label="Export preset"
+                onChange={(event) => setPresetKey(event.target.value)}
+              >
+                {presets.map((preset) => (
+                  <option key={preset.key} value={preset.key}>
+                    {preset.label}
                   </option>
                 ))}
               </select>
@@ -248,7 +317,36 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                   )}
                 </p>
               )}
+              {(exportsByClip.get(clip.id)?.length ?? 0) > 0 && (
+                <ul className="export-list" data-testid="export-list">
+                  {(exportsByClip.get(clip.id) ?? []).map((item) => (
+                    <li key={item.id} className="export-row" data-testid="export-row">
+                      <span className="export-preset">{item.preset}</span>
+                      <span className={`status-pill ${item.status}`} data-testid="export-status">
+                        {item.status}
+                      </span>
+                      {item.status === 'ready' && item.file_url && (
+                        <a href={assetUrl(item.file_url) ?? undefined} download>
+                          Download
+                        </a>
+                      )}
+                      {item.status === 'failed' && item.error && (
+                        <span className="error-note">{item.error}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <div className="card-actions">
+                {clip.status === 'ready' && presets.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void handleExport(clip)}
+                    disabled={exportingClipId === clip.id}
+                  >
+                    Export
+                  </button>
+                )}
                 <button type="button" onClick={() => void handleDelete(clip.id)}>
                   Delete
                 </button>

@@ -4,6 +4,7 @@ from app.schemas.analysis import EventRead, SceneRead
 from app.schemas.candidates import CandidateRead, CandidateStatusUpdate
 from app.schemas.clips import ClipGenerateRequest, ClipRead, ClipUpdate
 from app.schemas.editing import EditingProfileRead
+from app.schemas.exports import ExportCreate, ExportPresetRead, ExportRead
 from app.schemas.health import HealthResponse
 from app.schemas.jobs import JobProcessRequest, JobRead
 from app.schemas.projects import ProjectCreate, ProjectRead, ProjectUpdate
@@ -18,6 +19,9 @@ __all__ = [
     "ClipUpdate",
     "EditingProfileRead",
     "EventRead",
+    "ExportCreate",
+    "ExportPresetRead",
+    "ExportRead",
     "HealthResponse",
     "JobProcessRequest",
     "JobRead",

@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ClipsPanel from './ClipsPanel';
 import * as clipsService from '../services/clips';
 import * as editingProfilesService from '../services/editingProfiles';
+import * as exportsService from '../services/exports';
 import type { Clip } from '../types/clip';
 import type { EditingProfile } from '../types/editingProfile';
+import type { Export, ExportPreset } from '../types/export';
 
 const VIDEOS = [
   { id: 7, filename: 'stream_recording.mp4' },
@@ -67,8 +69,60 @@ function clip(overrides: Partial<Clip> = {}): Clip {
   };
 }
 
+const PRESETS: ExportPreset[] = [
+  {
+    key: 'youtube',
+    label: 'YouTube',
+    description: 'H.264 1080p',
+    container: 'mp4',
+    video_codec: 'h264',
+    audio_codec: 'aac',
+    crf: 20,
+    encoder_preset: 'medium',
+    max_width: 1920,
+    audio_bitrate: '192k',
+  },
+  {
+    key: 'archive',
+    label: 'Local archive',
+    description: 'H.265 full-resolution',
+    container: 'mp4',
+    video_codec: 'h265',
+    audio_codec: 'aac',
+    crf: 20,
+    encoder_preset: 'slow',
+    max_width: null,
+    audio_bitrate: '320k',
+  },
+];
+
+function exportRow(overrides: Partial<Export> = {}): Export {
+  return {
+    id: 5,
+    clip_id: 1,
+    project_id: 'p'.repeat(32),
+    preset: 'youtube',
+    container: 'mp4',
+    video_codec: 'h264',
+    audio_codec: 'aac',
+    settings: { crf: 20 },
+    editing_profile: 'clean',
+    plan_snapshot: null,
+    app_version: '0.1.0',
+    status: 'ready',
+    file_size_bytes: 1024,
+    error: null,
+    file_url: '/api/exports/5/file',
+    created_at: '2026-10-14T10:05:00',
+    updated_at: '2026-10-14T10:05:00',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.spyOn(editingProfilesService, 'listEditingProfiles').mockResolvedValue(PROFILES);
+  vi.spyOn(exportsService, 'listExportPresets').mockResolvedValue(PRESETS);
+  vi.spyOn(exportsService, 'listProjectExports').mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -375,5 +429,68 @@ describe('ClipsPanel', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Clip cut failed'));
     expect(screen.queryByTestId('clip-player')).not.toBeInTheDocument();
+  });
+
+  it('queues an export for a ready clip with the chosen preset', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([clip()]);
+    const listExports = vi
+      .spyOn(exportsService, 'listProjectExports')
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([exportRow({ status: 'pending', file_url: null })]);
+    const createSpy = vi
+      .spyOn(exportsService, 'createExport')
+      .mockResolvedValue({ job_id: 30, export_id: 5, status: 'pending' });
+    const onJobsChanged = vi.fn();
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} onJobsChanged={onJobsChanged} />);
+    await waitFor(() => expect(screen.getByTestId('clip-card')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Export preset'), { target: { value: 'archive' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+
+    await waitFor(() => expect(createSpy).toHaveBeenCalledWith(1, 'archive'));
+    expect(onJobsChanged).toHaveBeenCalledWith(7);
+    await waitFor(() => expect(screen.getByTestId('export-row')).toBeInTheDocument());
+    expect(listExports).toHaveBeenCalled();
+  });
+
+  it('offers a download link for a finished export', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([clip()]);
+    vi.spyOn(exportsService, 'listProjectExports').mockResolvedValue([exportRow()]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('export-row')).toBeInTheDocument());
+    expect(screen.getByTestId('export-status')).toHaveTextContent('ready');
+    const link = within(screen.getByTestId('export-row')).getByRole('link');
+    expect(link).toHaveAttribute('href', expect.stringContaining('/api/exports/5/file'));
+    expect(link).toHaveTextContent('Download');
+  });
+
+  it('does not offer exports for unrendered clips', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({ status: 'pending', file_url: null }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-card')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Export' })).not.toBeInTheDocument();
+  });
+
+  it('surfaces export errors', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([clip()]);
+    vi.spyOn(exportsService, 'createExport').mockRejectedValue(
+      new Error('Request to /clips/1/export failed: Clip has not been rendered yet'),
+    );
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+    await waitFor(() => expect(screen.getByTestId('clip-card')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('has not been rendered yet');
+    });
   });
 });

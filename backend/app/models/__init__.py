@@ -7,6 +7,7 @@ Import every module here so ``Base.metadata`` is fully populated before
 from app.models.candidate import CandidateStatus, ClipCandidate
 from app.models.clip import Clip, ClipStatus
 from app.models.event import Event
+from app.models.export import Export, ExportStatus
 from app.models.processing import JobStatus, JobType, ProcessingJob
 from app.models.project import Project, ProjectStatus
 from app.models.scene import Scene
@@ -19,6 +20,8 @@ __all__ = [
     "ClipCandidate",
     "ClipStatus",
     "Event",
+    "Export",
+    "ExportStatus",
     "JobStatus",
     "JobType",
     "ProcessingJob",

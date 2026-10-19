@@ -15,6 +15,14 @@ from app.editing.captions import (
     cues_for_range,
     style_for_profile,
 )
+from app.editing.exports import (
+    DEFAULT_EXPORT_PRESET_KEY,
+    EXPORT_PRESETS,
+    ExportPreset,
+    UnknownExportPresetError,
+    get_export_preset,
+    list_export_presets,
+)
 from app.editing.framing import ASPECT_TARGETS, Framing, framing_plan
 from app.editing.plan import build_editing_plan, clamp_duration
 from app.editing.profiles import (
@@ -31,7 +39,9 @@ from app.editing.trimming import TrimResult, trim_clip_range
 
 __all__ = [
     "ASPECT_TARGETS",
+    "DEFAULT_EXPORT_PRESET_KEY",
     "DEFAULT_PROFILE_KEY",
+    "EXPORT_PRESETS",
     "PROFILES",
     "SUPPORTED_ASPECT_RATIOS",
     "AudioProcessing",
@@ -39,8 +49,10 @@ __all__ = [
     "CaptionStyle",
     "DynamicFraming",
     "EditingProfile",
+    "ExportPreset",
     "Framing",
     "TrimResult",
+    "UnknownExportPresetError",
     "UnknownProfileError",
     "audio_processing",
     "build_ass",
@@ -50,7 +62,9 @@ __all__ = [
     "cues_for_range",
     "dynamic_framing",
     "framing_plan",
+    "get_export_preset",
     "get_profile",
+    "list_export_presets",
     "list_profiles",
     "style_for_profile",
     "trim_clip_range",
