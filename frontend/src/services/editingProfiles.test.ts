@@ -11,6 +11,7 @@ const PROFILES = [
     zoom: false,
     audio_normalization: false,
     max_duration_seconds: null,
+    pacing: 'relaxed',
   },
   {
     key: 'shorts',
@@ -21,6 +22,7 @@ const PROFILES = [
     zoom: true,
     audio_normalization: true,
     max_duration_seconds: 60,
+    pacing: 'standard',
   },
 ];
 

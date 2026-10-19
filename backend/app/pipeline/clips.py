@@ -74,7 +74,11 @@ def generate_clips(db: Session, job: ProcessingJob) -> None:
 
 
 def _video_filters(project_id: str, clip) -> list[str]:
-    """Video filters for a clip: reframing first, then burned captions."""
+    """Video filters for a clip: reframing, captions, then pacing.
+
+    Pacing removes dead-air spans last so framing/caption filters operate on the
+    original clip timeline.
+    """
     filters: list[str] = []
     framing = (clip.editing_plan or {}).get("framing") or {}
     if framing.get("filter"):
@@ -82,6 +86,9 @@ def _video_filters(project_id: str, clip) -> list[str]:
     subtitles = _subtitle_track(project_id, clip)
     if subtitles is not None:
         filters.append(ffmpeg_service.subtitles_filter(subtitles))
+    pacing = (clip.editing_plan or {}).get("pacing") or {}
+    if pacing.get("video_filter"):
+        filters.append(pacing["video_filter"])
     return filters
 
 
@@ -98,7 +105,17 @@ def _subtitle_track(project_id: str, clip) -> Path | None:
 
 
 def _audio_filter(clip) -> str | None:
-    """The audio filter chain recorded in the clip's plan, if any."""
+    """The audio filter chain recorded in the clip's plan, if any.
+
+    Loudness normalization runs first, then pacing removes dead-air spans so the
+    audio timeline stays in sync with the paced video.
+    """
     plan = clip.editing_plan or {}
+    chain: list[str] = []
     audio = plan.get("audio") or {}
-    return audio.get("filter")
+    if audio.get("filter"):
+        chain.append(audio["filter"])
+    pacing = plan.get("pacing") or {}
+    if pacing.get("audio_filter"):
+        chain.append(pacing["audio_filter"])
+    return ",".join(chain) if chain else None

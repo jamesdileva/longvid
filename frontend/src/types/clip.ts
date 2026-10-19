@@ -37,6 +37,19 @@ export interface EditingPlanFraming {
   keyframes?: number[][];
 }
 
+/** Pacing decision recorded by the backend (roadmap 12.1). */
+export interface EditingPlanPacing {
+  style: string;
+  speech_ratio: number;
+  silence_ratio: number;
+  scene_changes_per_minute: number;
+  dead_air_runs: number[][];
+  silence_removed_seconds: number;
+  applied: boolean;
+  video_filter: string | null;
+  audio_filter: string | null;
+}
+
 /** Deterministic editing plan recorded on a clip (guide §21). */
 export interface EditingPlan {
   plan_version: number;
@@ -51,6 +64,7 @@ export interface EditingPlan {
   trim?: EditingPlanTrim;
   audio?: EditingPlanAudio;
   framing?: EditingPlanFraming;
+  pacing?: EditingPlanPacing;
 }
 
 export interface Clip {

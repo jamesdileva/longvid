@@ -101,6 +101,12 @@ class Settings(BaseSettings):
     reframe_smooth_window_seconds: float = 2.0
     reframe_max_keyframes: int = 20
 
+    # Pacing (roadmap 12.1): profiles with a non-relaxed pacing style cut
+    # internal dead air at render time. The per-style thresholds live in
+    # app/editing/pacing.py; this caps how much of a clip pacing may remove.
+    pacing_enabled: bool = True
+    pacing_max_removed_ratio: float = 0.5
+
     # Candidate scoring weights (implementation-guide §16).
     scoring_weights: dict[str, float] = {
         "semantic": 0.30,

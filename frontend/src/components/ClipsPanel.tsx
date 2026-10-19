@@ -283,6 +283,11 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                           trimmed {Math.round(clip.editing_plan.trim.silence_removed_seconds)}s
                         </span>
                       )}
+                    {clip.editing_plan.pacing?.applied && (
+                      <span data-testid="clip-pacing">
+                        paced {Math.round(clip.editing_plan.pacing.silence_removed_seconds)}s
+                      </span>
+                    )}
                   </span>
                 )}
                 {clip.file_size_bytes !== null && <span>{formatFileSize(clip.file_size_bytes)}</span>}

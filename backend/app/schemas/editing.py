@@ -20,6 +20,7 @@ class EditingProfileRead(BaseModel):
     zoom: bool
     audio_normalization: bool
     max_duration_seconds: float | None
+    pacing: str
 
     @classmethod
     def from_profile(cls, profile: EditingProfile) -> EditingProfileRead:

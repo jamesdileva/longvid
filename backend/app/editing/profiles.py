@@ -35,6 +35,7 @@ class EditingProfile:
     zoom: bool
     audio_normalization: bool
     max_duration_seconds: float | None = None
+    pacing: str = "relaxed"
 
     def to_dict(self) -> dict:
         """Return a JSON-serialisable representation of the profile."""
@@ -69,6 +70,7 @@ _PROFILES: tuple[EditingProfile, ...] = (
         zoom=True,
         audio_normalization=True,
         max_duration_seconds=60.0,
+        pacing="standard",
     ),
     EditingProfile(
         key="tiktok",
@@ -79,6 +81,7 @@ _PROFILES: tuple[EditingProfile, ...] = (
         zoom=True,
         audio_normalization=True,
         max_duration_seconds=60.0,
+        pacing="punchy",
     ),
 )
 

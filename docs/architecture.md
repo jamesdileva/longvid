@@ -589,12 +589,12 @@ minimal processing
 
 Implementations (Phase 10.1) live in `backend/app/editing/`. The catalog is
 `clean`, `youtube`, `shorts`, `tiktok`; each profile carries an aspect ratio,
-`captions`/`zoom`/`audio_normalization` flags and an optional maximum duration
-(60s for the vertical profiles). A profile plus a clip range resolves to a
-deterministic editing plan (`plan_version`, `profile`, `source`, `start`, `end`,
-`aspect_ratio`, `captions`, `zoom`, `audio_normalization`) that is snapshotted
-on the clip for reproducible exports. Applying the plan to pixels (reframing,
-captions, audio) lands in later phases.
+`captions`/`zoom`/`audio_normalization` flags, a pacing style and an optional
+maximum duration (60s for the vertical profiles). A profile plus a clip range
+resolves to a deterministic editing plan (`plan_version`, `profile`, `source`,
+`start`, `end`, `aspect_ratio`, `captions`, `zoom`, `audio_normalization`) that
+is snapshotted on the clip for reproducible exports. Applying the plan to pixels
+(reframing, captions, audio, pacing) lands in later phases.
 
 ```http
 GET /editing-profiles
@@ -653,6 +653,18 @@ center crop. The chain is snapshotted in the plan's `framing` entry
 ```http
 POST /videos/{id}/process   { "type": "track_subjects" }
 ```
+
+Phase 12.1 adds pacing (`backend/app/editing/pacing.py`). Each profile carries a
+pacing *style* (`relaxed` / `standard` / `punchy`); `clean` and `youtube` remain
+`relaxed`, `shorts` is `standard` and `tiktok` is `punchy`. At clip creation the
+engine measures the clip's speech ratio, silence ratio and scene-change rate
+from the transcript/silence/scene signals, then picks the internal dead-air runs
+to remove (per-style minimum run length and breathing room; runs overlapping
+speech are never cut; total removal is capped by `pacing_max_removed_ratio`).
+The decision is snapshotted in the plan's `pacing` entry together with the
+FFmpeg `select`/`setpts` (video) and `aselect`/`asetpts` (audio) filters that
+remove those spans and compact the timeline at render time, after reframing and
+captions have been applied.
 
 ---
 

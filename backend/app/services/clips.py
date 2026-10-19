@@ -14,6 +14,7 @@ from app.editing import (
     DynamicFraming,
     EditingProfile,
     Framing,
+    PacingDecision,
     audio_processing,
     build_ass,
     build_editing_plan,
@@ -44,6 +45,7 @@ def create_clip(
     profile: EditingProfile | None = None,
     trim: dict | None = None,
     caption_cues: list[CaptionCue] | None = None,
+    pacing: PacingDecision | None = None,
 ) -> Clip:
     """Snapshot a timeline definition as a pending clip.
 
@@ -79,6 +81,8 @@ def create_clip(
     plan["captions"] = has_captions
     if has_captions:
         plan["caption_cue_count"] = len(caption_cues or [])
+    if pacing is not None:
+        plan["pacing"] = pacing.to_dict()
     clip = Clip(
         video_id=video_id,
         candidate_id=candidate_id,

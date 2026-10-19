@@ -23,6 +23,7 @@ const PROFILES: EditingProfile[] = [
     zoom: false,
     audio_normalization: false,
     max_duration_seconds: null,
+    pacing: 'relaxed',
   },
   {
     key: 'shorts',
@@ -33,6 +34,7 @@ const PROFILES: EditingProfile[] = [
     zoom: true,
     audio_normalization: true,
     max_duration_seconds: 60,
+    pacing: 'standard',
   },
 ];
 
@@ -389,6 +391,41 @@ describe('ClipsPanel', () => {
 
     await waitFor(() => expect(screen.getByTestId('clip-trim')).toBeInTheDocument());
     expect(screen.getByTestId('clip-trim')).toHaveTextContent('trimmed 5s');
+  });
+
+  it('flags clips whose pacing cut dead air', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_profile: 'tiktok',
+        editing_plan: {
+          plan_version: 1,
+          profile: 'tiktok',
+          source: 'source/stream_recording.mp4',
+          start: 0,
+          end: 40,
+          aspect_ratio: '9:16',
+          captions: true,
+          zoom: true,
+          audio_normalization: true,
+          pacing: {
+            style: 'punchy',
+            speech_ratio: 0.6,
+            silence_ratio: 0.4,
+            scene_changes_per_minute: 8,
+            dead_air_runs: [[4.15, 7.85]],
+            silence_removed_seconds: 3.7,
+            applied: true,
+            video_filter: "select='not(between(t,4.150,7.850))',setpts=N/FRAME_RATE/TB",
+            audio_filter: "aselect='not(between(t,4.150,7.850))',asetpts=N/SR/TB",
+          },
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-pacing')).toBeInTheDocument());
+    expect(screen.getByTestId('clip-pacing')).toHaveTextContent('paced 4s');
   });
 
   it('surfaces generation errors', async () => {

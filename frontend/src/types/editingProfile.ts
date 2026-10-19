@@ -9,4 +9,5 @@ export interface EditingProfile {
   zoom: boolean;
   audio_normalization: boolean;
   max_duration_seconds: number | null;
+  pacing: string;
 }

@@ -10,7 +10,14 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.editing import UnknownProfileError, cues_for_range, get_profile, trim_clip_range
+from app.editing import (
+    UnknownProfileError,
+    clamp_duration,
+    cues_for_range,
+    get_profile,
+    pacing_plan,
+    trim_clip_range,
+)
 from app.models.candidate import CandidateStatus, ClipCandidate
 from app.models.processing import JobType
 from app.schemas import ClipGenerateRequest, ClipRead, ClipUpdate
@@ -56,6 +63,8 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 
     trim_kwargs = _trim_context(db, video)
+    scene_times = _scene_times(db, video.id)
+    pacing_enabled = get_settings().pacing_enabled
     existing = clip_service.existing_candidate_ids(db, video_id)
     selected = _select_candidates(candidates, payload, existing)
     if not selected:
@@ -75,6 +84,20 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
                 start=trimmed.start_seconds,
                 end=trimmed.end_seconds,
             )
+        pacing = None
+        if pacing_enabled:
+            plan_start, plan_end = clamp_duration(
+                profile, trimmed.start_seconds, trimmed.end_seconds
+            )
+            pacing = pacing_plan(
+                profile,
+                start_seconds=plan_start,
+                end_seconds=plan_end,
+                segments=trim_kwargs["segments"],
+                silences=trim_kwargs["silences"],
+                scene_times=scene_times,
+                max_removed_ratio=get_settings().pacing_max_removed_ratio,
+            )
         clip_service.create_clip(
             db,
             video_id,
@@ -85,6 +108,7 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
             profile=profile,
             trim=trimmed.trim,
             caption_cues=captions,
+            pacing=pacing,
         )
     db.commit()
 
@@ -122,6 +146,10 @@ def _silence_runs(db: DbSession, video_id: int) -> list[tuple[float, float]]:
         for event in analysis_service.list_events(db, video_id)
         if event.type == "silence"
     ]
+
+
+def _scene_times(db: DbSession, video_id: int) -> list[float]:
+    return [scene.start_seconds for scene in analysis_service.list_scenes(db, video_id)]
 
 
 @router.get("/videos/{video_id}/clips", response_model=list[ClipRead])

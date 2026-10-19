@@ -24,6 +24,7 @@ from app.editing.exports import (
     list_export_presets,
 )
 from app.editing.framing import ASPECT_TARGETS, Framing, framing_plan
+from app.editing.pacing import PACING_STYLES, PacingDecision, pacing_plan
 from app.editing.plan import build_editing_plan, clamp_duration
 from app.editing.profiles import (
     DEFAULT_PROFILE_KEY,
@@ -42,6 +43,7 @@ __all__ = [
     "DEFAULT_EXPORT_PRESET_KEY",
     "DEFAULT_PROFILE_KEY",
     "EXPORT_PRESETS",
+    "PACING_STYLES",
     "PROFILES",
     "SUPPORTED_ASPECT_RATIOS",
     "AudioProcessing",
@@ -51,6 +53,7 @@ __all__ = [
     "EditingProfile",
     "ExportPreset",
     "Framing",
+    "PacingDecision",
     "TrimResult",
     "UnknownExportPresetError",
     "UnknownProfileError",
@@ -66,6 +69,7 @@ __all__ = [
     "get_profile",
     "list_export_presets",
     "list_profiles",
+    "pacing_plan",
     "style_for_profile",
     "trim_clip_range",
 ]
