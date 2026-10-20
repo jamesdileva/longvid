@@ -274,6 +274,11 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                     )}
                     {clip.editing_plan.captions && <span>captions</span>}
                     {clip.editing_plan.zoom && <span>zoom</span>}
+                    {clip.editing_plan.zoom_pulses && (
+                      <span data-testid="clip-zoom">
+                        zoom x{clip.editing_plan.zoom_pulses.pulses.length}
+                      </span>
+                    )}
                     {clip.editing_plan.audio && (
                       <span data-testid="clip-audio">audio-norm</span>
                     )}

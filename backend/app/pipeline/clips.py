@@ -74,19 +74,23 @@ def generate_clips(db: Session, job: ProcessingJob) -> None:
 
 
 def _video_filters(project_id: str, clip) -> list[str]:
-    """Video filters for a clip: reframing, captions, then pacing.
+    """Video filters for a clip: reframing, zoom, captions, then pacing.
 
-    Pacing removes dead-air spans last so framing/caption filters operate on the
-    original clip timeline.
+    Pacing removes dead-air spans last so framing/zoom/caption filters operate
+    on the original clip timeline.
     """
     filters: list[str] = []
-    framing = (clip.editing_plan or {}).get("framing") or {}
+    plan = clip.editing_plan or {}
+    framing = plan.get("framing") or {}
     if framing.get("filter"):
         filters.append(framing["filter"])
+    zoom = plan.get("zoom_pulses") or {}
+    if zoom.get("filter"):
+        filters.append(zoom["filter"])
     subtitles = _subtitle_track(project_id, clip)
     if subtitles is not None:
         filters.append(ffmpeg_service.subtitles_filter(subtitles))
-    pacing = (clip.editing_plan or {}).get("pacing") or {}
+    pacing = plan.get("pacing") or {}
     if pacing.get("video_filter"):
         filters.append(pacing["video_filter"])
     return filters

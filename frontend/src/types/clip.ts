@@ -51,6 +51,16 @@ export interface EditingPlanPacing {
 }
 
 /** Deterministic editing plan recorded on a clip (guide §21). */
+/** Dynamic zoom pulses recorded by the backend (roadmap 12.2). */
+export interface EditingPlanZoom {
+  scale: number;
+  fps: number;
+  target_width: number;
+  target_height: number;
+  pulses: number[][];
+  filter: string;
+}
+
 export interface EditingPlan {
   plan_version: number;
   profile: string;
@@ -65,6 +75,7 @@ export interface EditingPlan {
   audio?: EditingPlanAudio;
   framing?: EditingPlanFraming;
   pacing?: EditingPlanPacing;
+  zoom_pulses?: EditingPlanZoom;
 }
 
 export interface Clip {

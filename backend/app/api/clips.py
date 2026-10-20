@@ -64,6 +64,7 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
 
     trim_kwargs = _trim_context(db, video)
     scene_times = _scene_times(db, video.id)
+    emphasis_times = _emphasis_times(db, video.id)
     pacing_enabled = get_settings().pacing_enabled
     existing = clip_service.existing_candidate_ids(db, video_id)
     selected = _select_candidates(candidates, payload, existing)
@@ -109,6 +110,7 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
             trim=trimmed.trim,
             caption_cues=captions,
             pacing=pacing,
+            emphasis_times=emphasis_times,
         )
     db.commit()
 
@@ -150,6 +152,15 @@ def _silence_runs(db: DbSession, video_id: int) -> list[tuple[float, float]]:
 
 def _scene_times(db: DbSession, video_id: int) -> list[float]:
     return [scene.start_seconds for scene in analysis_service.list_scenes(db, video_id)]
+
+
+def _emphasis_times(db: DbSession, video_id: int) -> list[float]:
+    """Emphasis moments for dynamic zoom (roadmap 12.2): audio-spike times."""
+    return [
+        event.start_seconds
+        for event in analysis_service.list_events(db, video_id)
+        if event.type == "audio_spike"
+    ]
 
 
 @router.get("/videos/{video_id}/clips", response_model=list[ClipRead])

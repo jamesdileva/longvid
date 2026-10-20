@@ -428,6 +428,41 @@ describe('ClipsPanel', () => {
     expect(screen.getByTestId('clip-pacing')).toHaveTextContent('paced 4s');
   });
 
+  it('flags clips with dynamic zoom pulses', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_profile: 'shorts',
+        editing_plan: {
+          plan_version: 1,
+          profile: 'shorts',
+          source: 'source/stream_recording.mp4',
+          start: 0,
+          end: 40,
+          aspect_ratio: '9:16',
+          captions: true,
+          zoom: true,
+          audio_normalization: true,
+          zoom_pulses: {
+            scale: 1.12,
+            fps: 30,
+            target_width: 1080,
+            target_height: 1920,
+            pulses: [
+              [2.7, 4.5, 1.12],
+              [8.0, 9.8, 1.12],
+            ],
+            filter: "zoompan=z='1':d=1:s=1080x1920:fps=30.00000",
+          },
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-zoom')).toBeInTheDocument());
+    expect(screen.getByTestId('clip-zoom')).toHaveTextContent('zoom x2');
+  });
+
   it('surfaces generation errors', async () => {
     vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([]);
     vi.spyOn(clipsService, 'generateClips').mockRejectedValue(

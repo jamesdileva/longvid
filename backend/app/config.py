@@ -107,6 +107,13 @@ class Settings(BaseSettings):
     pacing_enabled: bool = True
     pacing_max_removed_ratio: float = 0.5
 
+    # Dynamic zoom (roadmap 12.2): zoom-enabled profiles punch in around
+    # emphasis moments (audio spikes) with a smooth triangular pulse.
+    zoom_scale: float = 1.12
+    zoom_lead_seconds: float = 0.3
+    zoom_hold_seconds: float = 1.5
+    zoom_max_pulses: int = 6
+
     # Candidate scoring weights (implementation-guide §16).
     scoring_weights: dict[str, float] = {
         "semantic": 0.30,

@@ -659,12 +659,23 @@ pacing *style* (`relaxed` / `standard` / `punchy`); `clean` and `youtube` remain
 `relaxed`, `shorts` is `standard` and `tiktok` is `punchy`. At clip creation the
 engine measures the clip's speech ratio, silence ratio and scene-change rate
 from the transcript/silence/scene signals, then picks the internal dead-air runs
-to remove (per-style minimum run length and breathing room; runs overlapping
-speech are never cut; total removal is capped by `pacing_max_removed_ratio`).
+to remove (per-style minimum run length and breathing room; runs are taken from
+the RMS silence detector, which is trusted over the often-contiguous ASR
+segments; total removal is capped by `pacing_max_removed_ratio`).
 The decision is snapshotted in the plan's `pacing` entry together with the
 FFmpeg `select`/`setpts` (video) and `aselect`/`asetpts` (audio) filters that
-remove those spans and compact the timeline at render time, after reframing and
-captions have been applied.
+remove those spans and compact the timeline at render time, after reframing,
+zoom and captions have been applied.
+
+Phase 12.2 adds dynamic zoom (`backend/app/editing/zoom.py`). For zoom-enabled
+profiles (`shorts`, `tiktok`) the engine turns the analysis `audio_spike` events
+inside the clip into short, centered punch-in pulses (a lead-in, hold and decay
+around each emphasis moment; overlapping pulses are merged and the count is
+capped). Because the clip is already framed to its target size, the effect is a
+single FFmpeg `zoompan` filter whose per-frame zoom is a triangular expression
+over the input frame count (`in / fps`); it is applied after reframing and before
+captions so burned-in text is not magnified. The resolved pulses, target size,
+fps and filter are snapshotted on the plan's `zoom_pulses` entry.
 
 ---
 

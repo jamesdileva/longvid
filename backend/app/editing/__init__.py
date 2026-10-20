@@ -37,6 +37,7 @@ from app.editing.profiles import (
 )
 from app.editing.reframing import DynamicFraming, dynamic_framing
 from app.editing.trimming import TrimResult, trim_clip_range
+from app.editing.zoom import ZoomPlan, ZoomPulse, zoom_plan
 
 __all__ = [
     "ASPECT_TARGETS",
@@ -57,6 +58,8 @@ __all__ = [
     "TrimResult",
     "UnknownExportPresetError",
     "UnknownProfileError",
+    "ZoomPlan",
+    "ZoomPulse",
     "audio_processing",
     "build_ass",
     "build_editing_plan",
@@ -72,4 +75,5 @@ __all__ = [
     "pacing_plan",
     "style_for_profile",
     "trim_clip_range",
+    "zoom_plan",
 ]

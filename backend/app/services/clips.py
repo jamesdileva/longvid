@@ -15,6 +15,7 @@ from app.editing import (
     EditingProfile,
     Framing,
     PacingDecision,
+    ZoomPlan,
     audio_processing,
     build_ass,
     build_editing_plan,
@@ -23,6 +24,7 @@ from app.editing import (
     framing_plan,
     get_profile,
     style_for_profile,
+    zoom_plan,
 )
 from app.models.clip import Clip, ClipStatus
 from app.models.video import Video
@@ -46,6 +48,7 @@ def create_clip(
     trim: dict | None = None,
     caption_cues: list[CaptionCue] | None = None,
     pacing: PacingDecision | None = None,
+    emphasis_times: list[float] | None = None,
 ) -> Clip:
     """Snapshot a timeline definition as a pending clip.
 
@@ -77,6 +80,11 @@ def create_clip(
     framing = _framing_for_clip(profile, video, settings, start=start, end=end)
     if framing is not None:
         plan["framing"] = framing.to_dict()
+    zoom = _zoom_for_clip(
+        profile, video, framing, settings, start=start, end=end, emphasis_times=emphasis_times
+    )
+    if zoom is not None:
+        plan["zoom_pulses"] = zoom.to_dict()
     has_captions = bool(profile.captions and caption_cues)
     plan["captions"] = has_captions
     if has_captions:
@@ -132,6 +140,36 @@ def _framing_for_clip(
         if dynamic is not None:
             return dynamic
     return framing_plan(profile, source_width=video.width, source_height=video.height)
+
+
+def _zoom_for_clip(
+    profile: EditingProfile,
+    video: Video | None,
+    framing: Framing | DynamicFraming | None,
+    settings,
+    *,
+    start: float,
+    end: float,
+    emphasis_times: list[float] | None,
+) -> ZoomPlan | None:
+    """Dynamic zoom around emphasis moments, sized to the framed frame."""
+    if video is None or not emphasis_times:
+        return None
+    target_width = framing.target_width if framing is not None else video.width
+    target_height = framing.target_height if framing is not None else video.height
+    return zoom_plan(
+        profile,
+        emphasis_times=emphasis_times,
+        start_seconds=start,
+        end_seconds=end,
+        target_width=target_width,
+        target_height=target_height,
+        fps=video.fps,
+        scale=settings.zoom_scale,
+        lead_seconds=settings.zoom_lead_seconds,
+        hold_seconds=settings.zoom_hold_seconds,
+        max_pulses=settings.zoom_max_pulses,
+    )
 
 
 def list_video_clips(db: Session, video_id: int) -> list[Clip]:
