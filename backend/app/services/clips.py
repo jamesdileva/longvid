@@ -26,6 +26,7 @@ from app.editing import (
     style_for_profile,
     zoom_plan,
 )
+from app.editing.caption_emphasis import detect_emphasis
 from app.models.clip import Clip, ClipStatus
 from app.models.video import Video
 from app.providers.vision import SubjectTrack
@@ -87,8 +88,21 @@ def create_clip(
         plan["zoom_pulses"] = zoom.to_dict()
     has_captions = bool(profile.captions and caption_cues)
     plan["captions"] = has_captions
+    emphases: dict[int, list[str]] = {}
     if has_captions:
-        plan["caption_cue_count"] = len(caption_cues or [])
+        cues = caption_cues or []
+        plan["caption_cue_count"] = len(cues)
+        if settings.caption_emphasis_enabled:
+            for index, cue in enumerate(cues):
+                words = detect_emphasis(cue.text, limit=settings.caption_emphasis_limit)
+                if words:
+                    emphases[index] = words
+            if emphases:
+                plan["caption_emphasis"] = {
+                    "style": style_for_profile(profile).name,
+                    "word_count": sum(len(words) for words in emphases.values()),
+                    "words": _unique_words(emphases),
+                }
     if pacing is not None:
         plan["pacing"] = pacing.to_dict()
     clip = Clip(
@@ -109,9 +123,22 @@ def create_clip(
             video.project_id,
             clip.id,
             srt=build_srt(caption_cues or []),
-            ass=build_ass(caption_cues or [], style_for_profile(profile)),
+            ass=build_ass(
+                caption_cues or [],
+                style_for_profile(profile),
+                emphases=emphases or None,
+            ),
         )
     return clip
+
+
+def _unique_words(emphases: dict[int, list[str]]) -> list[str]:
+    """Emphasised words across cues, de-duplicated, in first-seen order."""
+    seen: dict[str, None] = {}
+    for words in emphases.values():
+        for word in words:
+            seen.setdefault(word.lower())
+    return list(seen)
 
 
 def _framing_for_clip(

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.editing.caption_emphasis import emphasize_text
 from app.editing.profiles import EditingProfile
 
 # Transcript segments as (start, end, text).
@@ -18,6 +19,8 @@ Segments = list[tuple[float, float, str]]
 ASS_COLOR_WHITE = "&H00FFFFFF"
 ASS_COLOR_BLACK = "&H00000000"
 ASS_COLOR_SHADOW = "&H80000000"
+# ASS colours are &HAABBGGRR; this gold is RGB(255, 213, 0).
+ASS_COLOR_EMPHASIS = "&H0000D5FF"
 
 
 @dataclass(frozen=True)
@@ -43,6 +46,8 @@ class CaptionStyle:
     margin_v: int
     play_res_x: int
     play_res_y: int
+    emphasis_color: str = ASS_COLOR_EMPHASIS
+    emphasis_scale: int = 115
 
 
 LANDSCAPE_STYLE = CaptionStyle(
@@ -101,6 +106,42 @@ def cues_for_range(
     return cues
 
 
+def split_cues(cues: list[CaptionCue], *, max_words: int) -> list[CaptionCue]:
+    """Break long cues into shorter ones at word boundaries (roadmap 12.3).
+
+    Times are distributed across the chunks proportionally to their character
+    length, so the words of a segment stay in sync with the audio. ``max_words``
+    ``<= 0`` disables splitting.
+    """
+    if max_words <= 0:
+        return cues
+    out: list[CaptionCue] = []
+    for cue in cues:
+        out.extend(_split_cue(cue, max_words))
+    return out
+
+
+def _split_cue(cue: CaptionCue, max_words: int) -> list[CaptionCue]:
+    words = cue.text.split()
+    if len(words) <= max_words:
+        return [cue]
+    duration = cue.end_seconds - cue.start_seconds
+    chunks = [words[index : index + max_words] for index in range(0, len(words), max_words)]
+    weights = [sum(len(word) for word in chunk) for chunk in chunks]
+    total = sum(weights) or 1
+    out: list[CaptionCue] = []
+    cursor = cue.start_seconds
+    for position, chunk in enumerate(chunks):
+        end = (
+            cue.end_seconds
+            if position == len(chunks) - 1
+            else cursor + duration * weights[position] / total
+        )
+        out.append(CaptionCue(round(cursor, 3), round(end, 3), " ".join(chunk)))
+        cursor = end
+    return out
+
+
 def build_srt(cues: list[CaptionCue]) -> str:
     """Serialise cues as SubRip (SRT)."""
     blocks = [
@@ -110,8 +151,18 @@ def build_srt(cues: list[CaptionCue]) -> str:
     return "\n\n".join(blocks) + ("\n" if blocks else "")
 
 
-def build_ass(cues: list[CaptionCue], style: CaptionStyle) -> str:
-    """Serialise cues as Advanced SubStation Alpha (ASS)."""
+def build_ass(
+    cues: list[CaptionCue],
+    style: CaptionStyle,
+    *,
+    emphases: dict[int, list[str]] | None = None,
+) -> str:
+    """Serialise cues as Advanced SubStation Alpha (ASS).
+
+    ``emphases`` maps a cue's index to the words that should be highlighted;
+    those words are wrapped in override tags by
+    :func:`app.editing.caption_emphasis.emphasize_text`.
+    """
     lines = [
         "[Script Info]",
         "ScriptType: v4.00+",
@@ -136,11 +187,21 @@ def build_ass(cues: list[CaptionCue], style: CaptionStyle) -> str:
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
-    for cue in cues:
+    for index, cue in enumerate(cues):
+        text = _ass_text(cue.text)
+        words = (emphases or {}).get(index)
+        if words:
+            text = emphasize_text(
+                text,
+                words,
+                color=style.emphasis_color,
+                scale=style.emphasis_scale,
+                reset_color=style.primary_color,
+            )
         lines.append(
             "Dialogue: 0,"
             f"{_ass_time(cue.start_seconds)},{_ass_time(cue.end_seconds)},"
-            f"Default,,0,0,0,,{_ass_text(cue.text)}"
+            f"Default,,0,0,0,,{text}"
         )
     return "\n".join(lines) + "\n"
 

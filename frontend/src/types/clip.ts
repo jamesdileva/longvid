@@ -51,6 +51,13 @@ export interface EditingPlanPacing {
 }
 
 /** Deterministic editing plan recorded on a clip (guide §21). */
+/** Keyword emphasis recorded by the backend (roadmap 12.3). */
+export interface EditingPlanCaptionEmphasis {
+  style: string;
+  word_count: number;
+  words: string[];
+}
+
 /** Dynamic zoom pulses recorded by the backend (roadmap 12.2). */
 export interface EditingPlanZoom {
   scale: number;
@@ -69,6 +76,7 @@ export interface EditingPlan {
   end: number;
   aspect_ratio: string;
   captions: boolean;
+  caption_emphasis?: EditingPlanCaptionEmphasis;
   zoom: boolean;
   audio_normalization: boolean;
   trim?: EditingPlanTrim;

@@ -677,6 +677,17 @@ over the input frame count (`in / fps`); it is applied after reframing and befor
 captions so burned-in text is not magnified. The resolved pulses, target size,
 fps and filter are snapshotted on the plan's `zoom_pulses` entry.
 
+Phase 12.3 adds caption intelligence (`backend/app/editing/caption_emphasis.py`).
+Before cues are serialised, long transcript segments are split at word boundaries
+into short lines (`caption_max_words`) with their duration distributed
+proportionally to character length — automatic caption timing that keeps words
+in sync with the audio. Each line is then scored for its most important word(s)
+(heuristics over a stopword list, word length, ALL-CAPS and digits; ties resolve
+to first appearance, capped by `caption_emphasis_limit`) and those words are
+wrapped in ASS override tags so they render larger and in an accent colour. The
+resolved emphasis (style, count, words) is snapshotted on the plan's
+`caption_emphasis` entry; SRT keeps the plain text.
+
 ---
 
 # 17. Project Structure

@@ -463,6 +463,37 @@ describe('ClipsPanel', () => {
     expect(screen.getByTestId('clip-zoom')).toHaveTextContent('zoom x2');
   });
 
+  it('flags clips with emphasised caption keywords', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_profile: 'shorts',
+        editing_plan: {
+          plan_version: 1,
+          profile: 'shorts',
+          source: 'source/stream_recording.mp4',
+          start: 0,
+          end: 40,
+          aspect_ratio: '9:16',
+          captions: true,
+          zoom: true,
+          audio_normalization: true,
+          caption_emphasis: {
+            style: 'vertical',
+            word_count: 3,
+            words: ['highlight', 'moment'],
+          },
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('clip-caption-emphasis')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('clip-caption-emphasis')).toHaveTextContent('kw 3');
+  });
+
   it('surfaces generation errors', async () => {
     vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([]);
     vi.spyOn(clipsService, 'generateClips').mockRejectedValue(

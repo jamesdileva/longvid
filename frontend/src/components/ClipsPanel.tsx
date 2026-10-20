@@ -273,6 +273,11 @@ export default function ClipsPanel({ projectId, videos, onJobsChanged }: ClipsPa
                       </span>
                     )}
                     {clip.editing_plan.captions && <span>captions</span>}
+                    {clip.editing_plan.caption_emphasis && (
+                      <span data-testid="clip-caption-emphasis">
+                        kw {clip.editing_plan.caption_emphasis.word_count}
+                      </span>
+                    )}
                     {clip.editing_plan.zoom && <span>zoom</span>}
                     {clip.editing_plan.zoom_pulses && (
                       <span data-testid="clip-zoom">

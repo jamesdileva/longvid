@@ -13,6 +13,7 @@ from app.editing.captions import (
     build_ass,
     build_srt,
     cues_for_range,
+    split_cues,
     style_for_profile,
 )
 from app.editing.exports import (
@@ -73,6 +74,7 @@ __all__ = [
     "list_export_presets",
     "list_profiles",
     "pacing_plan",
+    "split_cues",
     "style_for_profile",
     "trim_clip_range",
     "zoom_plan",

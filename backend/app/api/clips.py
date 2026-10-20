@@ -16,6 +16,7 @@ from app.editing import (
     cues_for_range,
     get_profile,
     pacing_plan,
+    split_cues,
     trim_clip_range,
 )
 from app.models.candidate import CandidateStatus, ClipCandidate
@@ -85,6 +86,7 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
                 start=trimmed.start_seconds,
                 end=trimmed.end_seconds,
             )
+            captions = split_cues(captions, max_words=get_settings().caption_max_words)
         pacing = None
         if pacing_enabled:
             plan_start, plan_end = clamp_duration(

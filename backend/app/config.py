@@ -84,6 +84,12 @@ class Settings(BaseSettings):
     # that request captions. Disable to render clips caption-free.
     captions_enabled: bool = True
 
+    # Caption intelligence (roadmap 12.3): split long cues into short lines at
+    # word boundaries and highlight the most important word(s) per line.
+    caption_max_words: int = 6
+    caption_emphasis_enabled: bool = True
+    caption_emphasis_limit: int = 2
+
     # Audio processing (roadmap 10.4): profiles with audio_normalization get a
     # gate + EBU R128 loudness normalization chain at render time.
     audio_loudness_target_lufs: float = -16.0
