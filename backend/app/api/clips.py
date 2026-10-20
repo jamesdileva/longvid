@@ -16,6 +16,7 @@ from app.editing import (
     cues_for_range,
     get_profile,
     pacing_plan,
+    select_hook,
     split_cues,
     trim_clip_range,
 )
@@ -73,25 +74,40 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
         raise HTTPException(status.HTTP_409_CONFLICT, "No new candidates to clip")
 
     caption_cues_enabled = profile.captions and get_settings().captions_enabled
+    settings = get_settings()
     for candidate in selected:
         trimmed = trim_clip_range(
             candidate.start_seconds,
             candidate.end_seconds,
             **trim_kwargs,
         )
+        hook = None
+        clip_start = trimmed.start_seconds
+        if settings.hook_enabled:
+            hook = select_hook(
+                profile,
+                segments=trim_kwargs["segments"],
+                start_seconds=trimmed.start_seconds,
+                end_seconds=trimmed.end_seconds,
+                emphasis_times=emphasis_times,
+                min_opening_seconds=settings.hook_min_opening_seconds,
+                min_remaining_seconds=settings.hook_min_remaining_seconds,
+                min_score=settings.hook_min_score,
+                keyword_limit=settings.hook_keyword_limit,
+            )
+            if hook is not None and hook.applied:
+                clip_start = hook.hook_start_seconds
         captions = None
         if caption_cues_enabled:
             captions = cues_for_range(
                 trim_kwargs["segments"],
-                start=trimmed.start_seconds,
+                start=clip_start,
                 end=trimmed.end_seconds,
             )
-            captions = split_cues(captions, max_words=get_settings().caption_max_words)
+            captions = split_cues(captions, max_words=settings.caption_max_words)
         pacing = None
         if pacing_enabled:
-            plan_start, plan_end = clamp_duration(
-                profile, trimmed.start_seconds, trimmed.end_seconds
-            )
+            plan_start, plan_end = clamp_duration(profile, clip_start, trimmed.end_seconds)
             pacing = pacing_plan(
                 profile,
                 start_seconds=plan_start,
@@ -99,12 +115,12 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
                 segments=trim_kwargs["segments"],
                 silences=trim_kwargs["silences"],
                 scene_times=scene_times,
-                max_removed_ratio=get_settings().pacing_max_removed_ratio,
+                max_removed_ratio=settings.pacing_max_removed_ratio,
             )
         clip_service.create_clip(
             db,
             video_id,
-            start_seconds=trimmed.start_seconds,
+            start_seconds=clip_start,
             end_seconds=trimmed.end_seconds,
             title=_title_for(candidate),
             candidate_id=candidate.id,
@@ -112,6 +128,7 @@ def generate_clips(video_id: int, payload: ClipGenerateRequest, db: DbSession) -
             trim=trimmed.trim,
             caption_cues=captions,
             pacing=pacing,
+            hook=hook,
             emphasis_times=emphasis_times,
         )
     db.commit()

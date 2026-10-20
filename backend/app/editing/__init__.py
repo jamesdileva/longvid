@@ -25,6 +25,7 @@ from app.editing.exports import (
     list_export_presets,
 )
 from app.editing.framing import ASPECT_TARGETS, Framing, framing_plan
+from app.editing.hooks import HookPlan, select_hook
 from app.editing.pacing import PACING_STYLES, PacingDecision, pacing_plan
 from app.editing.plan import build_editing_plan, clamp_duration
 from app.editing.profiles import (
@@ -55,6 +56,7 @@ __all__ = [
     "EditingProfile",
     "ExportPreset",
     "Framing",
+    "HookPlan",
     "PacingDecision",
     "TrimResult",
     "UnknownExportPresetError",
@@ -74,6 +76,7 @@ __all__ = [
     "list_export_presets",
     "list_profiles",
     "pacing_plan",
+    "select_hook",
     "split_cues",
     "style_for_profile",
     "trim_clip_range",

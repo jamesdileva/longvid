@@ -51,6 +51,17 @@ export interface EditingPlanPacing {
 }
 
 /** Deterministic editing plan recorded on a clip (guide §21). */
+/** Opening hook detected by the backend (roadmap 12.4). */
+export interface EditingPlanHook {
+  applied: boolean;
+  hook_start_seconds: number;
+  hook_end_seconds: number;
+  hook_text: string;
+  original_start_seconds: number;
+  skipped_seconds: number;
+  score: number;
+}
+
 /** Keyword emphasis recorded by the backend (roadmap 12.3). */
 export interface EditingPlanCaptionEmphasis {
   style: string;
@@ -84,6 +95,7 @@ export interface EditingPlan {
   framing?: EditingPlanFraming;
   pacing?: EditingPlanPacing;
   zoom_pulses?: EditingPlanZoom;
+  hook?: EditingPlanHook;
 }
 
 export interface Clip {

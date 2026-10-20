@@ -14,6 +14,7 @@ from app.editing import (
     DynamicFraming,
     EditingProfile,
     Framing,
+    HookPlan,
     PacingDecision,
     ZoomPlan,
     audio_processing,
@@ -49,6 +50,7 @@ def create_clip(
     trim: dict | None = None,
     caption_cues: list[CaptionCue] | None = None,
     pacing: PacingDecision | None = None,
+    hook: HookPlan | None = None,
     emphasis_times: list[float] | None = None,
 ) -> Clip:
     """Snapshot a timeline definition as a pending clip.
@@ -105,6 +107,8 @@ def create_clip(
                 }
     if pacing is not None:
         plan["pacing"] = pacing.to_dict()
+    if hook is not None:
+        plan["hook"] = hook.to_dict()
     clip = Clip(
         video_id=video_id,
         candidate_id=candidate_id,

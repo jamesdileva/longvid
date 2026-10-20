@@ -24,6 +24,7 @@ const PROFILES: EditingProfile[] = [
     audio_normalization: false,
     max_duration_seconds: null,
     pacing: 'relaxed',
+    hook: false,
   },
   {
     key: 'shorts',
@@ -35,6 +36,7 @@ const PROFILES: EditingProfile[] = [
     audio_normalization: true,
     max_duration_seconds: 60,
     pacing: 'standard',
+    hook: true,
   },
 ];
 
@@ -492,6 +494,39 @@ describe('ClipsPanel', () => {
       expect(screen.getByTestId('clip-caption-emphasis')).toBeInTheDocument(),
     );
     expect(screen.getByTestId('clip-caption-emphasis')).toHaveTextContent('kw 3');
+  });
+
+  it('flags clips that open on a detected hook', async () => {
+    vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([
+      clip({
+        editing_profile: 'shorts',
+        editing_plan: {
+          plan_version: 1,
+          profile: 'shorts',
+          source: 'source/stream_recording.mp4',
+          start: 10,
+          end: 40,
+          aspect_ratio: '9:16',
+          captions: true,
+          zoom: true,
+          audio_normalization: true,
+          hook: {
+            applied: true,
+            hook_start_seconds: 10,
+            hook_end_seconds: 14,
+            hook_text: 'HUGE revelation about 2024',
+            original_start_seconds: 0,
+            skipped_seconds: 10,
+            score: 5.5,
+          },
+        },
+      }),
+    ]);
+
+    render(<ClipsPanel projectId="p" videos={VIDEOS} />);
+
+    await waitFor(() => expect(screen.getByTestId('clip-hook')).toBeInTheDocument());
+    expect(screen.getByTestId('clip-hook')).toHaveTextContent('hook');
   });
 
   it('surfaces generation errors', async () => {

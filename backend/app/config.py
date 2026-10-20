@@ -120,6 +120,14 @@ class Settings(BaseSettings):
     zoom_hold_seconds: float = 1.5
     zoom_max_pulses: int = 6
 
+    # Hook detection (roadmap 12.4): hook-enabled profiles start the clip on the
+    # strongest sentence when it is not already at the opening.
+    hook_enabled: bool = True
+    hook_min_opening_seconds: float = 1.5
+    hook_min_remaining_seconds: float = 3.0
+    hook_min_score: float = 1.0
+    hook_keyword_limit: int = 3
+
     # Candidate scoring weights (implementation-guide §16).
     scoring_weights: dict[str, float] = {
         "semantic": 0.30,

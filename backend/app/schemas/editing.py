@@ -21,6 +21,7 @@ class EditingProfileRead(BaseModel):
     audio_normalization: bool
     max_duration_seconds: float | None
     pacing: str
+    hook: bool
 
     @classmethod
     def from_profile(cls, profile: EditingProfile) -> EditingProfileRead:

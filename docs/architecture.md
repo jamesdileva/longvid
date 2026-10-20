@@ -589,7 +589,8 @@ minimal processing
 
 Implementations (Phase 10.1) live in `backend/app/editing/`. The catalog is
 `clean`, `youtube`, `shorts`, `tiktok`; each profile carries an aspect ratio,
-`captions`/`zoom`/`audio_normalization` flags, a pacing style and an optional
+`captions`/`zoom`/`audio_normalization` flags, a pacing style, whether it uses
+hook detection, and an optional
 maximum duration (60s for the vertical profiles). A profile plus a clip range
 resolves to a deterministic editing plan (`plan_version`, `profile`, `source`,
 `start`, `end`, `aspect_ratio`, `captions`, `zoom`, `audio_normalization`) that
@@ -687,6 +688,15 @@ to first appearance, capped by `caption_emphasis_limit`) and those words are
 wrapped in ASS override tags so they render larger and in an accent colour. The
 resolved emphasis (style, count, words) is snapshotted on the plan's
 `caption_emphasis` entry; SRT keeps the plain text.
+
+Phase 12.4 adds hook detection (`backend/app/editing/hooks.py`). Hook-enabled
+profiles (`shorts`, `tiktok`) score each sentence inside the clip — important
+words (the caption keyword heuristics), proximity to an audio-spike emphasis
+moment, and enough length to carry an idea — and pick the strongest one. If it
+is not already at the opening, the clip start moves to that sentence's natural
+boundary so the clip opens on the hook; the rest of the clip is the
+context/payoff. The decision (hook text, span, skipped seconds, score, whether
+it was applied) is snapshotted on the plan's `hook` entry.
 
 ---
 
