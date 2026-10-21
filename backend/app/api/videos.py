@@ -9,8 +9,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.analysis.content_profiles import (
+    UnknownContentProfileError,
+    list_content_profiles,
+)
 from app.database import get_db
-from app.schemas import JobProcessRequest, JobRead, VideoImportRequest, VideoRead
+from app.schemas import (
+    ContentProfileRead,
+    JobProcessRequest,
+    JobRead,
+    VideoContentProfileUpdate,
+    VideoImportRequest,
+    VideoRead,
+)
 from app.services import jobs as job_service
 from app.services import projects as project_service
 from app.services import videos as video_service
@@ -21,6 +32,12 @@ from app.workers.queue import get_queue
 DbSession = Annotated[Session, Depends(get_db)]
 
 router = APIRouter(tags=["videos"])
+
+
+@router.get("/content-profiles", response_model=list[ContentProfileRead])
+def list_profiles() -> list[ContentProfileRead]:
+    """List the content profiles available for highlight detection."""
+    return [ContentProfileRead.from_profile(profile) for profile in list_content_profiles()]
 
 
 @router.post(
@@ -67,6 +84,21 @@ def delete_video(video_id: int, db: DbSession) -> None:
     """Remove a video and its generated workspace assets."""
     if not video_service.delete_video(db, video_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Video not found")
+
+
+@router.put("/videos/{video_id}/content-profile", response_model=VideoRead)
+def set_content_profile(
+    video_id: int, payload: VideoContentProfileUpdate, db: DbSession
+) -> VideoRead:
+    """Select the content profile used for this video's highlight detection."""
+    video = video_service.get_video(db, video_id)
+    if video is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Video not found")
+    try:
+        updated = video_service.set_content_profile(db, video, payload.content_profile)
+    except UnknownContentProfileError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    return VideoRead.model_validate(updated)
 
 
 @router.post(

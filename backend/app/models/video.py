@@ -58,6 +58,7 @@ class Video(Base):
     preview_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     audio_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     subject_track: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    content_profile: Mapped[str] = mapped_column(String(32), default="general", nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow, nullable=False)
 

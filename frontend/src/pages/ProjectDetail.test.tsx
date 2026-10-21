@@ -7,6 +7,7 @@ import * as videosService from '../services/videos';
 import * as jobsService from '../services/jobs';
 import * as candidatesService from '../services/candidates';
 import * as clipsService from '../services/clips';
+import * as contentProfilesService from '../services/contentProfiles';
 import * as editingProfilesService from '../services/editingProfiles';
 import * as exportsService from '../services/exports';
 import type { Project } from '../types/project';
@@ -44,6 +45,7 @@ const VIDEO: Video = {
   thumbnail_url: '/api/videos/7/thumbnail',
   preview_url: '/api/videos/7/preview',
   audio_path: null,
+  content_profile: 'general',
   created_at: '2026-10-13T14:00:00',
   updated_at: '2026-10-13T14:00:00',
 };
@@ -133,6 +135,7 @@ function mockBase() {
 
 beforeEach(() => {
   vi.spyOn(clipsService, 'listProjectClips').mockResolvedValue([]);
+  vi.spyOn(contentProfilesService, 'listContentProfiles').mockResolvedValue([]);
   vi.spyOn(editingProfilesService, 'listEditingProfiles').mockResolvedValue([]);
   vi.spyOn(exportsService, 'listExportPresets').mockResolvedValue([]);
   vi.spyOn(exportsService, 'listProjectExports').mockResolvedValue([]);
@@ -157,6 +160,39 @@ describe('ProjectDetail videos section', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByTestId('video-duration')[0]).toHaveTextContent('1:00:00');
     expect(screen.queryByTestId('videos-empty')).not.toBeInTheDocument();
+  });
+
+  it('changes a video content profile', async () => {
+    mockBase();
+    vi.spyOn(contentProfilesService, 'listContentProfiles').mockResolvedValue([
+      {
+        key: 'general',
+        label: 'General',
+        description: 'Broad scoring',
+        guidance: 'Score broadly.',
+        keywords: [],
+        category: 'highlight',
+      },
+      {
+        key: 'gaming',
+        label: 'Gaming',
+        description: 'Kills and clutches',
+        guidance: 'Prioritize kills.',
+        keywords: ['kill'],
+        category: 'gaming',
+      },
+    ]);
+    const updateSpy = vi
+      .spyOn(contentProfilesService, 'updateContentProfile')
+      .mockResolvedValue({ ...VIDEO, content_profile: 'gaming' });
+
+    renderDetail();
+
+    const select = await screen.findByLabelText('Content profile');
+    fireEvent.change(select, { target: { value: 'gaming' } });
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith(7, 'gaming'));
+    expect(screen.getByLabelText('Content profile')).toHaveValue('gaming');
   });
 
   it('imports a video and refreshes the list', async () => {

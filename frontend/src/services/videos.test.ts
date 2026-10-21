@@ -17,6 +17,7 @@ const VIDEO = {
   file_size_bytes: 1024,
   thumbnail_url: '/api/videos/1/thumbnail',
   preview_url: '/api/videos/1/preview',
+  content_profile: 'general',
   created_at: '2026-10-13T14:00:00',
   updated_at: '2026-10-13T14:00:00',
 };

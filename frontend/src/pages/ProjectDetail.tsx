@@ -7,8 +7,10 @@ import VideoImportForm from '../components/VideoImportForm';
 import { getProject, updateProject } from '../services/projects';
 import { deleteVideo, importVideo, listVideos } from '../services/videos';
 import { generateCandidates } from '../services/candidates';
+import { listContentProfiles, updateContentProfile } from '../services/contentProfiles';
 import { listVideoJobs, processVideo } from '../services/jobs';import type { Project } from '../types/project';
 import type { Video } from '../types/video';
+import type { ContentProfile } from '../types/contentProfile';
 import type { Job } from '../types/job';
 import { isActiveJob } from '../types/job';
 import { formatTimestamp, pluralize } from '../utils/format';
@@ -19,6 +21,7 @@ export default function ProjectDetail() {
   const { id = '' } = useParams();
   const [project, setProject] = useState<Project | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [contentProfiles, setContentProfiles] = useState<ContentProfile[]>([]);
   const [jobsByVideo, setJobsByVideo] = useState<Record<number, Job[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,10 +44,15 @@ export default function ProjectDetail() {
       setLoading(true);
       setError(null);
       try {
-        const [loadedProject, loadedVideos] = await Promise.all([getProject(id), listVideos(id)]);
+        const [loadedProject, loadedVideos, loadedProfiles] = await Promise.all([
+          getProject(id),
+          listVideos(id),
+          listContentProfiles(),
+        ]);
         if (!active) return;
         setProject(loadedProject);
         setVideos(loadedVideos);
+        setContentProfiles(loadedProfiles);
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : 'Failed to load project');
       } finally {
@@ -175,6 +183,18 @@ export default function ProjectDetail() {
     }
   }
 
+  async function handleContentProfileChange(videoId: number, contentProfile: string) {
+    setError(null);
+    try {
+      const updated = await updateContentProfile(videoId, contentProfile);
+      setVideos((current) =>
+        current.map((video) => (video.id === updated.id ? updated : video)),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update content profile');
+    }
+  }
+
   async function handleRefreshJobs(videoId: number) {
     try {
       const jobs = await listVideoJobs(videoId);
@@ -272,6 +292,8 @@ export default function ProjectDetail() {
                 onTrackSubjects={handleTrackSubjects}
                 onGenerateCandidates={handleGenerateCandidates}
                 onDelete={handleDeleteVideo}
+                contentProfiles={contentProfiles}
+                onContentProfileChange={handleContentProfileChange}
                 registerElement={(element) => registerVideoElement(video.id, element)}
               />
             ))}

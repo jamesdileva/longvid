@@ -13,6 +13,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.analysis import scoring
+from app.analysis.content_profiles import DEFAULT_CONTENT_PROFILE_KEY, get_content_profile
 from app.analysis.windowing import WindowEvent, build_windows
 from app.config import Settings, get_settings
 from app.models.candidate import ClipCandidate
@@ -46,6 +47,7 @@ def generate_candidates(db: Session, job: ProcessingJob) -> None:
     duration = video.duration_seconds or 0.0
     if duration <= 0:
         raise ValueError("Video has no known duration")
+    content_profile = get_content_profile(video.content_profile or DEFAULT_CONTENT_PROFILE_KEY)
 
     job_service.update_progress(db, job, 0.1)
     segments = _transcript_segments(db, video.id)
@@ -74,28 +76,33 @@ def generate_candidates(db: Session, job: ProcessingJob) -> None:
     provider = _llm_provider_or_none(settings)
     selected: list[tuple[float, float, dict]] = []
     for window in windows:
+        hits = content_profile.keyword_hits(window.transcript)
         judgment = None
         if provider is not None:
             try:
-                judgment = provider.judge_window(window.render_prompt())
+                judgment = provider.judge_window(window.render_prompt(content_profile.guidance))
             except (LLMValidationError, ProviderUnavailableError) as exc:
                 # A single bad window must not sink the run.
                 logger.warning("Window at %.1fs skipped: %s", window.start_seconds, exc)
 
-        if judgment is not None:
-            if not judgment.is_highlight:
-                continue
+        if judgment is not None and judgment.is_highlight:
             start = window.start_seconds + judgment.suggested_start_offset
             end = window.end_seconds + judgment.suggested_end_offset
-            semantic = judgment.score
+            semantic = min(judgment.score + _profile_boost(hits), 1.0)
             category = judgment.category
             reason = judgment.reason
+            if hits:
+                reason = f"{reason} ({content_profile.label} signals matched.)"
             source = provider.name
-        elif _has_deterministic_signal(window):
+        elif hits or _has_deterministic_signal(window):
             start, end = window.start_seconds, window.end_seconds
-            semantic = 0.4  # neutral: interesting window, no model opinion
-            category = "detected"
-            reason = "Deterministic signals (audio/spike/events) without LLM judgment."
+            semantic = min(0.4 + _profile_boost(hits), 0.9)
+            category = content_profile.category if hits else "detected"
+            reason = (
+                f"{content_profile.label} content signals matched."
+                if hits
+                else "Deterministic signals (audio/spike/events) without LLM judgment."
+            )
             source = "deterministic"
         else:
             continue
@@ -178,6 +185,11 @@ def _transcript_segments(db: Session, video_id: int) -> list[tuple[float, float,
 
 def _has_deterministic_signal(window) -> bool:
     return any(event.type in DETERMINISTIC_SIGNAL_EVENTS for event in window.events)
+
+
+def _profile_boost(hits: int) -> float:
+    """Small semantic boost per distinct content-profile keyword (capped)."""
+    return min(0.1 * hits, 0.3)
 
 
 def _pad(start: float, end: float, duration: float, settings) -> tuple[float, float] | None:

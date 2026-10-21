@@ -32,8 +32,12 @@ class SemanticWindow:
     events: list[WindowEvent] = field(default_factory=list)
     scene_count: int = 0
 
-    def render_prompt(self) -> str:
-        """The structured prompt text sent to the LLM."""
+    def render_prompt(self, guidance: str | None = None) -> str:
+        """The structured prompt text sent to the LLM.
+
+        ``guidance`` is the selected content profile's focus (roadmap Phase 13);
+        it steers what counts as a highlight without changing the window data.
+        """
         lines = [
             "VIDEO WINDOW",
             f"Start: {_format_clock(self.start_seconds)}",
@@ -56,10 +60,11 @@ class SemanticWindow:
             [
                 "",
                 f"Scene changes in window: {self.scene_count}",
-                "",
-                "Is this a highlight worth clipping?",
             ]
         )
+        if guidance:
+            lines.extend(["", "Content focus:", guidance])
+        lines.extend(["", "Is this a highlight worth clipping?"])
         return "\n".join(lines)
 
 

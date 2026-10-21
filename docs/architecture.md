@@ -505,8 +505,26 @@ standalone_score: 0.90
 overall_score: 0.86
 ```
 
-## 14.5 Editor Planner
+## 14.4.1 Content Profiles (Phase 13)
 
+Each video carries a content profile (`general`, `gaming`, `podcast`,
+`commentary`) selected independently of its editing profile. A content profile
+specializes *highlight detection*:
+
+* **Prompt guidance** — the LLM is told what counts as a highlight for this
+  kind of source (kills, clutches and fails for gaming; strong opinions,
+  stories and jokes for podcasts; claims and controversial moments for
+  commentary; broad semantic scoring for general).
+* **A deterministic keyword lexicon** — profile words in the transcript both
+  boost the semantic score of an accepted window and can surface a window on
+  their own when the LLM is unavailable or rejects it. Keyword-derived
+  candidates are labelled with the profile category.
+
+The profile catalog lives in `backend/app/analysis/content_profiles.py`; the
+selection is stored on `videos.content_profile` and updated through
+`PUT /api/videos/{id}/content-profile`.
+
+## 14.5 Editor Planner
 Determines:
 
 * Start time

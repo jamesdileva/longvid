@@ -22,6 +22,7 @@ const VIDEO: Video = {
   thumbnail_url: '/api/videos/7/thumbnail',
   preview_url: '/api/videos/7/preview',
   audio_path: null,
+  content_profile: 'general',
   created_at: '2026-10-13T14:00:00',
   updated_at: '2026-10-13T14:00:00',
 };
@@ -93,6 +94,47 @@ describe('VideoCard', () => {
 
     expect(handlers.onDelete).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+  });
+
+  it('changes the content profile', () => {
+    const onContentProfileChange = vi.fn();
+    render(
+      <VideoCard
+        video={VIDEO}
+        jobs={[]}
+        onExtractAudio={vi.fn()}
+        onTranscribe={vi.fn()}
+        onAnalyze={vi.fn()}
+        onTrackSubjects={vi.fn()}
+        onGenerateCandidates={vi.fn()}
+        onDelete={vi.fn()}
+        contentProfiles={[
+          {
+            key: 'general',
+            label: 'General',
+            description: 'Broad scoring',
+            guidance: 'Score broadly.',
+            keywords: [],
+            category: 'highlight',
+          },
+          {
+            key: 'gaming',
+            label: 'Gaming',
+            description: 'Kills and clutches',
+            guidance: 'Prioritize kills.',
+            keywords: ['kill'],
+            category: 'gaming',
+          },
+        ]}
+        onContentProfileChange={onContentProfileChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Content profile'), {
+      target: { value: 'gaming' },
+    });
+
+    expect(onContentProfileChange).toHaveBeenCalledWith(7, 'gaming');
   });
 
   it('handles videos without preview assets', async () => {

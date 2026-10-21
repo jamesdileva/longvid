@@ -5,6 +5,7 @@ import AnalysisPanel from './AnalysisPanel';
 import TranscriptViewer from './TranscriptViewer';
 import type { Video } from '../types/video';
 import type { Job } from '../types/job';
+import type { ContentProfile } from '../types/contentProfile';
 import { formatDuration, formatFileSize, formatResolution } from '../utils/format';
 
 interface VideoCardProps {
@@ -16,6 +17,9 @@ interface VideoCardProps {
   onTrackSubjects: (video: Video) => void;
   onGenerateCandidates: (video: Video) => void;
   onDelete: (videoId: number) => void;
+  /** Content profiles for highlight detection; omitted in simple embeds. */
+  contentProfiles?: ContentProfile[];
+  onContentProfileChange?: (videoId: number, contentProfile: string) => void;
   /** Registers the preview <video> element so parents can seek it. */
   registerElement?: (element: HTMLVideoElement | null) => void;
 }
@@ -39,6 +43,8 @@ export default function VideoCard({
   onTrackSubjects,
   onGenerateCandidates,
   onDelete,
+  contentProfiles,
+  onContentProfileChange,
   registerElement,
 }: VideoCardProps) {
   const [confirming, setConfirming] = useState(false);
@@ -108,6 +114,26 @@ export default function VideoCard({
             )}
           </dd>
         </dl>
+        {contentProfiles && contentProfiles.length > 0 && (
+          <label className="content-profile">
+            Content profile
+            <select
+              aria-label="Content profile"
+              data-testid="content-profile-select"
+              value={video.content_profile}
+              disabled={Boolean(activeJob) || !onContentProfileChange}
+              onChange={(event) =>
+                onContentProfileChange?.(video.id, event.target.value)
+              }
+            >
+              {contentProfiles.map((profile) => (
+                <option key={profile.key} value={profile.key}>
+                  {profile.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {preview && (
           <video ref={videoRef} className="video-preview" controls preload="metadata" src={preview} />
         )}

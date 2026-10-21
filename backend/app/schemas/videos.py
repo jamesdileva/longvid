@@ -15,6 +15,12 @@ class VideoImportRequest(BaseModel):
     path: str = Field(min_length=1, max_length=1000)
 
 
+class VideoContentProfileUpdate(BaseModel):
+    """Select the analysis profile used for a video's highlight detection."""
+
+    content_profile: str = Field(min_length=1, max_length=32)
+
+
 class VideoRead(BaseModel):
     """Video representation returned by the API."""
 
@@ -34,6 +40,7 @@ class VideoRead(BaseModel):
     channels: int | None
     file_size_bytes: int | None
     audio_path: str | None
+    content_profile: str
     created_at: datetime
     updated_at: datetime
 

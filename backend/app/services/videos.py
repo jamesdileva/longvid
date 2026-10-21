@@ -12,6 +12,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.analysis.content_profiles import get_content_profile
 from app.config import get_settings
 from app.models.project import Project
 from app.models.video import Video, VideoStatus
@@ -33,6 +34,18 @@ def list_videos(db: Session, project_id: str) -> list[Video]:
 def get_video(db: Session, video_id: int) -> Video | None:
     """One video by id, or ``None``."""
     return db.get(Video, video_id)
+
+
+def set_content_profile(db: Session, video: Video, key: str) -> Video:
+    """Select the content profile used when detecting this video's highlights.
+
+    Raises :class:`UnknownContentProfileError` for a key outside the catalog.
+    """
+    get_content_profile(key)  # validate before persisting
+    video.content_profile = key
+    db.commit()
+    db.refresh(video)
+    return video
 
 
 def import_video(db: Session, project: Project, source_path: Path) -> Video:

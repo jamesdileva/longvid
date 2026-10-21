@@ -17,6 +17,7 @@ export interface Video {
   channels: number | null;
   file_size_bytes: number | null;
   audio_path: string | null;
+  content_profile: string;
   thumbnail_url: string | null;
   preview_url: string | null;
   created_at: string;
